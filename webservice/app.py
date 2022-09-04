@@ -48,13 +48,16 @@ def html_main():
     'user_actions_registered', 'user_actions_registered_perc', 
     'user_actions_anonymous', 'user_actions_anonymous_perc',
     'user_actions_order', 'user_actions_order_registered', 'user_actions_order_registered_perc',
-    'user_actions_order_anonymous','user_actions_order_anonymous_perc']
+    'user_actions_order_anonymous','user_actions_order_anonymous_perc','start','end']
     for stat_name in stats_needed:
       result[stat_name] = get_statistic(stat_name).get_json()
-      metrics_needed = ['user_coverage', 'catalog_coverage', 'diversity', 'diversity_gini', 'novelty']
+    
+    metrics_needed = ['user_coverage', 'catalog_coverage', 'diversity', 'diversity_gini', 'novelty']
     
     for metric_name in metrics_needed:  
       result[metric_name] = get_metric(metric_name).get_json()
+
+    result['timestamp'] = get_api_index().get_json()['timestamp']
 
     result['sidebar_info'] = app.sidebar_info
     result['metric_active'] = None
@@ -65,11 +68,16 @@ def html_kpis():
     '''Serve html page about kpis'''
     # call directly the get_metrics flask method implemented in our api to get json about all metrics
     result = {}
+
+    stats_needed = ['start','end']
+    for stat_name in stats_needed:
+      result[stat_name] = get_statistic(stat_name).get_json()
+
     metrics_needed = ['hit_rate', 'click_through_rate', 'top5_services_ordered', 'top5_services_recommended']   
     for metric_name in metrics_needed:
-      
       result[metric_name] = get_metric(metric_name).get_json()
 
+    result['timestamp'] = get_api_index().get_json()['timestamp']
     result['sidebar_info'] = app.sidebar_info
     result['metric_active'] = None
 

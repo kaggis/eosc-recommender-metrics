@@ -179,9 +179,21 @@
                                 </div>
                                 <div>RS Metrics
                                     <div class="page-title-subheading">Data statistics and metrics computed for the
-                                        Recommender System (RS)
+                                        Recommender System (RS) - Test !!
                                     </div>
+                                    
                                 </div>
+                            </div>
+                            <div class="page-title-actions">
+                                {% set start_data = data.start.value.split('.')[0].split(' ') %}
+                                {% set end_data = data.end.value.split('.')[0].split(' ') %}
+                                
+                                   
+                                        
+                                        <small>Start Date:</small> <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{start_data[0]}}T{{end_data[1]}}"> <i class="fa fa-calendar"></i> {{start_data[0]}}</div>
+                                        <small>End Date:</small> <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{end_data[0]}}T{{end_data[1]}}"><i class="fa fa-calendar"></i> {{end_data[0]}}</div>  
+                                        
+                                  
                             </div>
                         </div>
                     </div>
@@ -617,8 +629,13 @@
                                         <a href="javascript:void(0);">
                                             National Infrastructures for Research and Technology (GRNET) S. A.
                                         </a>
+                                        
                                     </li>
                                 </ul>
+                            </div>
+                            <div class="app-footer-right">
+                                {% set timestamp_data = data.timestamp.split('.')[0].split(' ') %}
+                                <small class="me-2">Report Generated on:</small> <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{timestamp_data[0]}}T{{timestamp_data[1]}}"><i class="fa fa-calendar"></i> {{timestamp_data[0]}}</div>  
                             </div>
                         </div>
                     </div>
