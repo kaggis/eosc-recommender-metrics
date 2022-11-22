@@ -101,7 +101,7 @@ if args.provider == 'athena':
     run.recommendations=aggregate_pandas_all(rsmetrics_db["recommendations"], [{"$match":{'provider':args.provider}},
                                                                                 {"$addFields": {"x":{"$zip":{"inputs":["$resource_ids","$resource_scores"]}}}},
                                                                                 {"$unwind":"$x"},
-                                                                                {"$addFields":{"resource_ids":{"$first":"$x"},"resource_scores":{"$last":"$x"}}}]).iloc[:,1:-1]
+                                                                                {"$addFields":{"resource_ids":{"$first":"$x"},"resource_scores":{"$last":"$x"}}}]).iloc[:,1:]
 
     run.recommendations.columns=["User", "Service", "Score", "Timestamp", "Type", "Provider", "Ingestion"]
 
