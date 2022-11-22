@@ -58,7 +58,7 @@ optional.add_argument('-s', '--starttime', metavar=('DATETIME'), help='process d
 optional.add_argument('-e', '--endtime', metavar=('DATETIME'), help='process data ending to given datetime in ISO format (UTC) e.g. YYYY-MM-DD', nargs='?', default=None)
 optional.add_argument('--use-cache', help='Use the specified file in configuration as the file to read resources', action='store_true')
 optional.add_argument('-h', '--help', action='help', help='show this help message and exit')
-optional.add_argument('-v', '--version', action='version', version='%(prog)s v'+__version__)
+optional.add_argument('-V', '--version', action='version', version='%(prog)s v'+__version__)
 
 #args=parser.parse_args(args=None if sys.argv[1:] else ['--help'])
 

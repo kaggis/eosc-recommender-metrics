@@ -7,6 +7,8 @@ from datetime import datetime
 import os
 import pandas as pd
 from inspect import getmembers, isfunction
+from pymongoarrow.api import find_pandas_all, aggregate_pandas_all
+import logging
 
 # local lib
 import metrics as m
@@ -19,6 +21,9 @@ __version__ = "0.2.2"
 
 
 os.environ['COLUMNS'] = "90"
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='[%(asctime)s] %(levelname)s %(message)s')
+
 
 def print_help(func):
     def inner():
@@ -38,7 +43,6 @@ def print_help(func):
 parser = argparse.ArgumentParser(prog='rsmetrics', description='Calculate metrics for the EOSC Marketplace RS', add_help=False)
 parser.print_help=print_help(parser.print_help)
 parser._action_groups.pop()
-required = parser.add_argument_group('required arguments')
 optional = parser.add_argument_group('optional arguments')
 
 optional.add_argument('-c', '--config', metavar=('FILEPATH'), help='override default configuration file (./config.yaml)', nargs='?', default='./config.yaml', type=str)
@@ -47,11 +51,11 @@ optional.add_argument('-s', '--starttime', metavar=('DATETIME'), help='calculate
 optional.add_argument('-e', '--endtime', metavar=('DATETIME'), help='calculate metrics ending to given datetime in ISO format (UTC) e.g. YYYY-MM-DD', nargs='?', default=None)
 
 optional.add_argument('-h', '--help', action='help', help='show this help message and exit')
-optional.add_argument('-v', '--version', action='version', version='%(prog)s v'+__version__)
-
-#args=parser.parse_args(args=None if sys.argv[1:] else ['--help'])
+optional.add_argument('-V', '--version', action='version', version='%(prog)s v'+__version__)
+optional.add_argument('-v', action='store_true')
 
 args=parser.parse_args()
+logging.disable = not args.v
 
 run=m.Runtime()
 
@@ -85,26 +89,35 @@ datastore = pymongo.MongoClient(config["datastore"], uuidRepresentation='pythonL
 rsmetrics_db = datastore[config["datastore"].split('/')[-1]]
 
 # first column (_id) ignored, where iloc is used
-run.user_actions_all=pd.DataFrame(list(rsmetrics_db["user_actions"].find({'provider':args.provider}))).iloc[:,1:]
+# pymongoarrow lib provides efficient and direct load of query results into panda data frames using functions such as find_pandas_all and aggregate_pandas_all
+logging.info("Reading user actions...")
+run.user_actions_all=find_pandas_all(rsmetrics_db["user_actions"], {'provider':args.provider}).iloc[:,1:]
 run.user_actions_all.columns=["User", "Source_Service", "Target_Service", "Reward", "Action", "Timestamp", "Source_Page_ID", "Target_Page_ID", "Type", "Provider", "Ingestion"]
 
+
+logging.info("Reading recommendations...")
 if args.provider == 'athena':
-    run.recommendations=pd.DataFrame(list(rsmetrics_db["recommendations"].aggregate([{"$match":{'provider':args.provider}},
-                                                                                 {"$addFields": {"x":{"$zip":{"inputs":["$resource_ids","$resource_scores"]}}}},
-                                                                                 {"$unwind":"$x"},
-                                                                                 {"$addFields":{"resource_ids":{"$first":"$x"},"resource_scores":{"$last":"$x"}}}]))).iloc[:,1:-1]
+    # aggregate_pandas_all directly returns a pandas dataframe
+    run.recommendations=aggregate_pandas_all(rsmetrics_db["recommendations"], [{"$match":{'provider':args.provider}},
+                                                                                {"$addFields": {"x":{"$zip":{"inputs":["$resource_ids","$resource_scores"]}}}},
+                                                                                {"$unwind":"$x"},
+                                                                                {"$addFields":{"resource_ids":{"$first":"$x"},"resource_scores":{"$last":"$x"}}}]).iloc[:,1:-1]
 
     run.recommendations.columns=["User", "Service", "Score", "Timestamp", "Type", "Provider", "Ingestion"]
 
 else:
-    run.recommendations=pd.DataFrame(list(rsmetrics_db["recommendations"].aggregate([{"$match":{'provider':args.provider}},
-                                                                                     {"$unwind":"$resource_ids"}]))).iloc[:,1:]
+    run.recommendations=aggregate_pandas_all(rsmetrics_db["recommendations"], [{"$match":{'provider':args.provider}},
+                                                                                    {"$unwind":"$resource_ids"}]).iloc[:,1:]
     run.recommendations.columns=["User", "Service", "Timestamp", "Type", "Provider", "Ingestion"]
 
-run.users=pd.DataFrame(list(rsmetrics_db["users"].find({"provider": {"$in": [args.provider]}}))).iloc[:,1:]
+# Due to the users and services data having nested fields and small number of results (hundreds to a couple of thousands) 
+# the pymongoarrow lib is not used to create the data frames. 
+# _ids are filtered out from the column results during the query
+logging.info("Reading users...")
+run.users=pd.DataFrame(list(rsmetrics_db["users"].find({"provider": {"$in": [args.provider]}},{"_id":0})))
 run.users.columns=["User", "Services", "Created_on", "Deleted_on", "Provider", "Ingestion"]
-
-run.services=pd.DataFrame(list(rsmetrics_db["resources"].find({"provider": {"$in": [args.provider]}}))).iloc[:,1:]
+logging.info("Reading services...")
+run.services=pd.DataFrame(list(rsmetrics_db["resources"].find({"provider": {"$in": [args.provider]}},{"_id":0})))
 run.services.columns=["Service", "Name", "Page", "Created_on", "Deleted_on", "Type", "Provider", "Ingestion"]
 
 # convert timestamp column to datetime object
@@ -144,10 +157,12 @@ func_names = list(map(lambda x: x[0], getmembers(m, isfunction)))
 func_names = list(filter(lambda x: not ( x=='metric' or x=='statistic') ,func_names))
 for func_name in func_names:
     # get function based on function name
+    
     func = getattr(m,func_name)
     # if function has attribute kind (which means that evaluates a metric or a static)
     if hasattr(func,"kind"):
         kind = getattr(func,"kind")
+        logging.info("Evaluating {}: {}...".format(kind, func_name))
         # execute and get value
         value= func(run)
         documentation = ""

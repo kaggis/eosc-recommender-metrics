@@ -27,3 +27,4 @@ urllib3==1.26.9
 Werkzeug==2.1.2
 zipp==3.8.0
 flask-pymongo==2.3.0
+pymongoarrow=0.6.2
