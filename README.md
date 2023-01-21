@@ -1,30 +1,32 @@
 # eosc-recommender-metrics
+
 A framework for counting the recommender metrics
 
-# Preprocessor v.0.2
+## Preprocessor v.0.2
+
 <p align="center">
 <a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png">
 <img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png" width="70%"/>
 </a>
 </p>
 
-# RS metrics v.0.2
+## RS metrics v.0.2
+
 <p align="center">
 <a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png">
 <img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png" width="70%"/>
 </a>
 </p>
 
+## Dependencies
 
-
-
-# Dependencies
-1. Install Conda from here: https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html. Tested on conda v 4.10.3.
+1. Install Conda from [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html). Tested on conda v 4.10.3.
 2. Run from terminal: `conda env create -f environment.yml`
 3. Run from terminal: `conda activate rsmetrics`
 4. Run from terminal: `chmod +x ./preprocessor.py ./preprocessor_common.py ./rsmetrics.py`
 
-# Usage
+## Usage
+
 5. Configure `./preprocessor_common.py`, `./preprocessor.py` and `./rsmetrics.py` by editting the `config.yaml` or providing another with `-c`.
 6. Run from terminal: `./preprocessor_common.py` in order to gather `users` and `resources` and store them in the `Datastore`:
 ```bash
@@ -46,10 +48,10 @@ A framework for counting the recommender metrics
 ./rsmetrics.py -p athena # same procedure as the first one for 'athena' provider
 ```
 
-## Reporting
+### Reporting
 
-The reporting script generates an evalutation report in html format automatically served from a spawed localserver (default: http://localhost:8080)
-and automatically opens the default browser to present the report. 
+The reporting script generates an evalutation report in html format automatically served from a spawed localserver [default: localhost:8080](htpp://localhost:8080)
+and automatically opens the default browser to present the report.
 
 To execute the script issue:
 ```
@@ -62,7 +64,7 @@ The script will automatically look for evaulation result files in the default fo
 
 The `report.py` script can be used with the `--input` parameter: a path to a folder that the results from the evaluation process have been generated (default folder:`./data`). The report script can also take an `--output` parameter: a path to an output folder where the generated report will be served automatically.
 
-_Note:_ the script copies to the output folder all the necessary files such as `pre_metrics.json`, `metrics.json` as well as `report.html.prototype` renamed to `index.html` 
+_Note:_ the script copies to the output folder all the necessary files such as `pre_metrics.json`, `metrics.json` as well as `report.html.prototype` renamed to `index.html`
 
 ```
 usage: report.py [-h] [-i STRING] [-o STRING] [-a STRING] [-p STRING]
@@ -81,9 +83,9 @@ optional arguments:
                         Port to bind and serve the report
 ```
 
-## Utilities
+### Utilities
 
-### Get service catalog script (./get_service_catalog.py)
+#### Get service catalog script (./get_service_catalog.py)
 
 This script contacts EOSC Marketplace catalog and generates a csv with a list of all available services, their name, id and url
 
@@ -93,12 +95,12 @@ chmod u+x ./get_service_catalog.py
 ./get_service_catalog.py
 ```
 
-#### Serve Evaluation Reports as a Service
+##### Serve Evaluation Reports as a Service
 
 The `webservice` folder hosts a simple webservice implemented in Flask framework which can be used to host the report results.
 
 __Note__: Please make sure you work in a virtual environment and you have already downloaded the required dependencies by issuing
-`pip install -r requirements.txt` 
+`pip install -r requirements.txt`
 
 The webservice application serves two endpoints
  - `/` : This is the frontend webpage that displays the Report Results in a UI
