@@ -99,6 +99,30 @@ def main(args):
 
             rsmetrics_db["user_actions"].insert_one(record)
 
+    # Create a listener class to react on each message received from the queue
+    class UserEventsListener(stomp.ConnectionListener):
+        def __init__(self, conn):
+            self.conn = conn
+
+        # In case of error log it along with the message
+        def on_error(self, frame):
+            logging.error("error occured {}".format(frame.body))
+
+        def on_disconnect(self):
+            logging.warning("disconnected ...trying to reconnect")
+            connect_subscribe(self.conn)
+
+        def on_message(self, frame):
+            # process the message
+            message = json.loads(frame.body)
+
+            if message['model'] == 'User':
+                rsmetrics_db['user_events_streaming'].insert_one(message)
+            elif message['model'] == 'Service':
+                rsmetrics_db['service_events_streaming'].insert_one(message)
+            else:
+                rsmetrics_db['other_events_streaming'].insert_one(message)
+
     # connect to the datastore
     mongo = pymongo.MongoClient(args.datastore,
                                 uuidRepresentation="pythonLegacy")
@@ -121,6 +145,8 @@ def main(args):
     # Check what kind of resource_type is going to be used
     if args.data_type == "user_actions":
         msg_queue.set_listener("", UserActionsListener(msg_queue))
+    elif args.data_type == "mp_db_events":
+        msg_queue.set_listener('', UserEventsListener(msg_queue))
     else:
         logging.error(
             "{} is not a supported ingestion data type".format(args.data_type)
@@ -160,7 +186,7 @@ if __name__ == "__main__":
         "--type",
         metavar="STRING",
         help=("type of data to be ingested "
-              "(e.g. user_actions, recommendations)"),
+              "(e.g. user_actions, recommendations, mp_db_events)"),
         required=True,
         dest="data_type",
     )
