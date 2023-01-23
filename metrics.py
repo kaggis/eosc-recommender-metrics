@@ -245,7 +245,7 @@ def user_actions_order_registered_perc(object):
     try:
         return round((user_actions_order_registered(object) * 100.0 /
                       user_actions_order(object)), 2)
-    except:
+    except ZeroDivisionError:
         return 0
 
 
