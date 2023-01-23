@@ -20,13 +20,14 @@ A framework for counting the recommender metrics
 
 ## Dependencies
 
-1. Install Conda from [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html). Tested on conda v 4.10.3.
+1. Install Conda from [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html). Tested on conda v 4.10.3.
 2. Run from terminal: `conda env create -f environment.yml`
 3. Run from terminal: `conda activate rsmetrics`
 4. Run from terminal: `chmod +x ./preprocessor.py ./preprocessor_common.py ./rsmetrics.py`
 
 ## Usage
 
+### Usage of the Batch System
 5. Configure `./preprocessor_common.py`, `./preprocessor.py` and `./rsmetrics.py` by editting the `config.yaml` or providing another with `-c`.
 6. Run from terminal: `./preprocessor_common.py` in order to gather `users` and `resources` and store them in the `Datastore`:
 ```bash
@@ -46,6 +47,12 @@ A framework for counting the recommender metrics
 ./rsmetrics.py # this will calculate and store statistics and metrics concerning data (users, resources, user_actions and recommendations) concerning the specified provider (which by default is 'cyfronet')
 ./rsmetrics.py -p cyfronet # equivalent to first one
 ./rsmetrics.py -p athena # same procedure as the first one for 'athena' provider
+```
+
+### Usage of the Streaming System
+10. Run from terminal `./rs-stream.py` in order to listen to the stream for new data, process them, and store them in the `Datastore`, concerning that particular provider:
+```bash
+./rs-stream.py -a username:password -q host:port -t user_actions -d ""mongodb://localhost:27017/datastore"" -p provider_name
 ```
 
 ### Reporting
@@ -123,4 +130,5 @@ This by default honors this repo's folder structure and directs to the root `/da
 You can override this by editing the `.env` file inside the `/webservice` folder, or specificy the `RS_EVAL_METRIC_SOURCE` variable accordingly before executing the `flask run` command
 
 _Tested with python 3.9_
+
 
