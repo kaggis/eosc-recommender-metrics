@@ -20,8 +20,14 @@ logging.basicConfig(
 )
 
 
-def main(args):
+def connect_subscribe(msg_queue, username, password, topic):
+    msg_queue.connect(username, password, wait=True)
+    # subscribe to the topic
+    msg_queue.subscribe(destination="/topic/" + topic, id=1,
+                        ack="auto")
 
+
+def main(args):
     # extract provider arg
     provider = args.provider
 
@@ -37,6 +43,10 @@ def main(args):
         # In case of error log it along with the message
         def on_error(self, frame):
             logging.error("error occured {}".format(frame.body))
+
+        def on_disconnect(self):
+            logging.warning("disconnected ...trying to reconnect")
+            connect_subscribe(self.conn)
 
         def on_message(self, frame):
             # process the message
@@ -117,13 +127,13 @@ def main(args):
         )
         sys.exit(1)
 
-    msg_queue.connect(username, password, wait=True)
-    # subscribe to the topic
-    msg_queue.subscribe(destination="/topic/" + args.data_type, id=1,
-                        ack="auto")
+    connect_subscribe(msg_queue, username, password, args.data_type)
 
     while True:
         time.sleep(2)
+        if not msg_queue.is_connected():
+            logging.warning("disconnected ...trying to reconnect")
+            connect_subscribe(msg_queue, username, password, args.data_type)
 
 
 if __name__ == "__main__":
