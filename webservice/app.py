@@ -295,3 +295,8 @@ def get_statistic(provider_name, stat_name):
         if stat["name"] == stat_name:
             return jsonify(stat)
     return respond_stat_404(stat_name)
+
+
+@app.route("/diag", strict_slashes=False)
+def diag():
+    return jsonify({"RS_metrics": {"status": "UP"}})
