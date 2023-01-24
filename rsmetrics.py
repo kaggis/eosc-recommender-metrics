@@ -137,7 +137,7 @@ rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 # aggregate_pandas_all
 logging.info("Reading user actions...")
 run.user_actions_all = find_pandas_all(
-    rsmetrics_db["user_actions"], {"provider": args.provider}
+    rsmetrics_db["user_actions"], {"provider": 'cyfronet'}
 ).iloc[:, 1:]
 run.user_actions_all.columns = [
     "User",
