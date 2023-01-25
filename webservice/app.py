@@ -1,19 +1,29 @@
 from flask import Flask, render_template, jsonify, abort, request, redirect
-from flask_pymongo import PyMongo
+from flask_pymongo import PyMongo, pymongo
+import xmlrpc.client
 import os
 import re
 from dotenv import load_dotenv
 import yaml
 
 
-app = Flask("RS_EVALUATION")
+app = Flask("RSEVAL")
+
 dotenv_path = os.path.join(app.instance_path, ".env")
 load_dotenv(dotenv_path)
 
-app.config["RS_EVALUATION_METRIC_DESC_DIR"] = os.environ.get(
-    "RS_EVALUATION_METRIC_DESC_DIR"
+app.config['JSON_SORT_KEYS'] = False
+app.config["RSEVAL_METRIC_DESC_DIR"] = os.environ.get(
+    "RSEVAL_METRIC_DESC_DIR"
 )
-app.config["MONGO_URI"] = os.environ.get("RS_EVALUATION_MONGO_URI")
+app.config["RSEVAL_STREAM_USER_ACTIONS_JOBNAME"] = os.environ.get(
+    "RSEVAL_STREAM_USER_ACTIONS_JOBNAME"
+)
+app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"] = os.environ.get(
+    "RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"
+)
+
+app.config["MONGO_URI"] = os.environ.get("RSEVAL_MONGO_URI")
 mongo = PyMongo(app)
 
 
@@ -23,7 +33,7 @@ def load_sidebar_info():
     metric descriptions
     in order to create automatically the appropriate links in sidebar
     """
-    folder = app.config["RS_EVALUATION_METRIC_DESC_DIR"]
+    folder = app.config["RSEVAL_METRIC_DESC_DIR"]
     desc = {}
     app.logger.info(
         "Opening metric description folder %s to gather sidebar info...",
@@ -43,7 +53,7 @@ def load_sidebar_info():
     except Exception as e:
         app.logger.error(
             "Could not load sidebar info from metric description folder:%s",
-            app.config["RS_EVALUATION_METRIC_DESC_DIR"],
+            app.config["RSEVAL_METRIC_DESC_DIR"],
             e,
         )
     return {"metric_descriptions": desc}
@@ -222,7 +232,7 @@ def html_metric_description(metric_name):
     result = {}
 
     # compose path to open correct yaml file
-    dir = app.config["RS_EVALUATION_METRIC_DESC_DIR"]
+    dir = app.config["RSEVAL_METRIC_DESC_DIR"]
     filename = metric_name + ".yml"
     try:
         with open(os.path.join(dir, filename), "r") as f:
@@ -232,7 +242,7 @@ def html_metric_description(metric_name):
     except Exception as e:
         app.logger.error(
             "Could not load sidebar info from metric description folder:%s",
-            app.config["RS_EVALUATION_METRIC_DESC_DIR"],
+            app.config["RSEVALMETRIC_DESC_DIR"],
             e,
         )
         abort(404)
@@ -299,4 +309,82 @@ def get_statistic(provider_name, stat_name):
 
 @app.route("/diag", strict_slashes=False)
 def diag():
-    return jsonify({"RS_metrics": {"status": "UP"}})
+    """Health check"""
+
+    def print_status(value):
+        if value == 1:
+            return "UP"
+        elif value == 0:
+            return "DOWN"
+        return "UNKNOWN"
+
+    # begin with statused deemed as DOWN and then check if they are UP and
+    # update. Api statusis deemed up since executing this call means API is
+    # indeed working
+
+    general_status = 0
+    api_status = 1
+    mongo_status = 0
+    stream_status = 0
+    stream_ua = 0
+    stream_mpdb = 0
+
+    # check mongo connectivity with a sensible timeout of 3sec
+    mongo_check = PyMongo(
+        app, uri=app.config["MONGO_URI"], serverSelectionTimeoutMS=3000
+    )
+    try:
+        mongo_check.cx.admin.command("ping")
+        mongo_status = 1
+    except pymongo.errors.ServerSelectionTimeoutError:
+        app.logger.error("Error trying to check mongodb connectivity")
+
+    # check supervisor connectivity
+    try:
+        rpc_srv = xmlrpc.client.ServerProxy('http://localhost:9001/RPC2')
+
+        # if connected get supervisor status
+        supervisor = rpc_srv.supervisor.getState()
+        if supervisor["statecode"]:
+            job_ua_info = rpc_srv.supervisor.getProcessInfo(
+                app.config["RSEVAL_STREAM_USER_ACTIONS_JOBNAME"]
+            )
+            if job_ua_info["statename"] == "RUNNING":
+                stream_ua = 1
+
+            job_mpdb_info = rpc_srv.supervisor.getProcessInfo(
+                app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"]
+            )
+            if job_mpdb_info["statename"] == "RUNNING":
+                stream_mpdb = 1
+
+    except (ConnectionRefusedError, xmlrpc.client.Fault):
+        app.logger.error(
+            "Error trying to check supervisord connectivity and job statuses"
+        )
+
+    # aggregate results
+    stream_status = stream_ua * stream_mpdb
+    # streaming being unavailable doesn't affect the RSEVAL ui/api to display
+    # results. we should use another metric to affect general status if
+    # streaming is absent for quite a while and the data is stale
+    general_status = api_status * mongo_status
+
+    result = {
+        "RS_metrics": {
+            "status": print_status(general_status),
+            "RS_metrics_api": {"status": print_status(api_status)},
+            "RS_metrics_datastore": {"status": print_status(mongo_status)},
+            "RS_streaming": {
+                "status": print_status(stream_status),
+                "RS_streaming_user_actions": {
+                    "status": print_status(stream_ua)
+                },
+                "RS_streaming_mp_events": {
+                    "status": print_status(stream_mpdb)
+                }
+            },
+        }
+    }
+
+    return jsonify(result)
