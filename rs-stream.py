@@ -9,6 +9,7 @@ import logging
 import ssl
 import pymongo
 import dateutil.parser
+from datetime import datetime
 
 # Streaming connector using stomp protocol to ingest data from rs databus
 
@@ -116,8 +117,54 @@ def main(args):
             # process the message
             message = json.loads(frame.body)
 
+            # Handle user and update users collection
             if message['model'] == 'User':
+                # retrieve user id
+                user = int(message['record']['id'])
+
+                # Update user info
+                # if user is deleted, update entry as in update,
+                # but also set deleted_on with timestamp
+                if message['cud'] == 'update' or message['cud'] == 'delete':
+                    record = {'accessed_resources':
+                              sorted(set(
+                                  message['record']["accessed_services"])),
+                              'deleted_on': datetime.fromisoformat(
+                                  message['timestamp'].replace('Z', '+00:00'))
+                              if message['cud'] == 'delete' else None,
+                              'provider': ['cyfronet', 'athena'],
+                              'ingestion': 'stream'}
+
+                    # a connection has already been established at main
+                    result = rsmetrics_db['users'].update_one({'id': user},
+                                                              {'$set': record})
+                    if result.matched_count == 1:
+                        logging.info("The user {} was successfully {}d".format(
+                            user, message['cud']))
+
+                # Create user record
+                elif message['cud'] == 'create':
+                    record = {'id': user,
+                              'accessed_resources': sorted(set(
+                                  message['record']["accessed_services"])),
+                              'created_on': datetime.fromisoformat(
+                                  message['timestamp'].replace('Z', '+00:00')),
+                              'deleted_on': None,
+                              'provider': ['cyfronet', 'athena'],
+                              'ingestion': 'stream'}
+
+                    # a connection has already been established at main
+                    result = rsmetrics_db['users'].insert_one(record)
+                    if result.acknowledged == 1:
+                        logging.info("The user {} was successfully \
+                            created".format(user))
+
+                else:
+                    logging.info("Unknown Type of user's state")
+
+                # add user info to streaming collection too
                 rsmetrics_db['user_events_streaming'].insert_one(message)
+
             elif message['model'] == 'Service':
                 rsmetrics_db['service_events_streaming'].insert_one(message)
             else:
