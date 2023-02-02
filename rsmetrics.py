@@ -137,7 +137,7 @@ rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 # aggregate_pandas_all
 logging.info("Reading user actions...")
 run.user_actions_all = find_pandas_all(
-    rsmetrics_db["user_actions"], {"provider": 'cyfronet'}
+    rsmetrics_db["user_actions"], {"provider": {"$in": [args.provider]}}
 ).iloc[:, 1:]
 run.user_actions_all.columns = [
     "User",
@@ -152,7 +152,6 @@ run.user_actions_all.columns = [
     "Provider",
     "Ingestion",
 ]
-
 
 logging.info("Reading recommendations...")
 if args.provider == "athena":
@@ -175,7 +174,9 @@ if args.provider == "athena":
                 }
             },
         ],
-    ).iloc[:, 1:]
+    ).iloc[:, 1:-1]
+
+    print(run.recommendations)
 
     run.recommendations.columns = [
         "User",
@@ -340,4 +341,6 @@ jsonstr = json.dumps(output, indent=4)
 rsmetrics_db["metrics"].delete_many({"provider": args.provider})
 rsmetrics_db["metrics"].insert_one(output)
 
-print(jsonstr)
+logging.info(jsonstr)
+logging.info("Metrics computation finished for {}...".format(
+    args.provider))

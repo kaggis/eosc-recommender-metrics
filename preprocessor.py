@@ -5,10 +5,13 @@ import yaml
 import pymongo
 from datetime import datetime
 import os
-import pandas as pd
+import logging
 
-# local lib
-import reward_mapping as rm
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="[%(asctime)s] %(levelname)s %(message)s",
+)
 
 __copyright__ = (
     "© "
@@ -111,30 +114,6 @@ optional.add_argument(
 
 args = parser.parse_args()
 
-
-class Mock:
-    pass
-
-
-class User_Action:
-    def __init__(self, source_page_id, target_page_id, order):
-        self.source = Mock()
-        self.target = Mock()
-        self.action = Mock()
-        self.source.page_id = source_page_id
-        self.target.page_id = target_page_id
-        self.action.order = order
-
-
-reward_mapping = {
-    "order": 1.0,
-    "interest": 0.7,
-    "mild_interest": 0.3,
-    "simple_transition": 0.0,
-    "unknown_transition": 0.0,
-    "exit": 0.0,
-}
-
 query = {"timestamp": {"$lt": datetime.utcnow()}}
 
 if args.starttime:
@@ -166,101 +145,18 @@ if not provider:
     print("Given provider not in configuration")
     sys.exit(0)
 
-# connect to internal db server for reading users and resources
+# connect to internal db server for reading users
 datastore = pymongo.MongoClient(config["datastore"],
                                 uuidRepresentation="pythonLegacy")
 # use db
 rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 
-# reading resources to be used for filtering user_actions
-resources = pd.DataFrame(
-    list(rsmetrics_db["resources"]
-         .find({"provider": {"$in": [args.provider]}}))
-).iloc[:, 1:]
-
-resources.columns = [
-    "Service",
-    "Name",
-    "Page",
-    "Created_on",
-    "Deleted_on",
-    "Type",
-    "Provider",
-    "Ingestion",
-]
-resources = pd.Series(resources["Service"].values,
-                      index=resources["Page"]).to_dict()
-
-# connect to external db server for reading user_actions and recommendations
+# connect to external db server for reading recommendations
 myclient = pymongo.MongoClient(provider["db"],
                                uuidRepresentation="pythonLegacy")
 # use db
 recdb = myclient[provider["db"].split("/")[-1]]
 
-# reward_mapping.py is modified so that the function
-# reads the Transition rewards csv file once
-# consequently, one argument has been added to the
-# called function
-ROOT_DIR = "./"
-
-TRANSITION_REWARDS_CSV_PATH = os.path.join(
-    ROOT_DIR, "resources", "transition_rewards.csv"
-)
-transition_rewards_df = pd.read_csv(TRANSITION_REWARDS_CSV_PATH,
-                                    index_col="source")
-
-luas = []
-col = "user_actions" if provider["name"] == "athena" else "user_action"
-for ua in recdb[col].find(query).sort("user"):
-    # set -1 to anonymous users
-    user = -1
-    if "user" in ua:
-        user = ua["user"]
-
-    # process data that map from page id to service id exist
-    # for both source and target page ids
-    # if not set service id to -1
-    try:
-        _pageid = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
-        source_service_id = resources[_pageid]
-    except (KeyError, IndexError):
-        source_service_id = -1
-
-    try:
-        _pageid = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
-        target_service_id = resources[_pageid]
-    except KeyError:
-        target_service_id = -1
-
-    # function has been modified where one more argument is given
-    # in order to avoid time-consuming processing of reading csv file
-    # for every func call
-    symbolic_reward = rm.ua_to_reward_id(
-        transition_rewards_df,
-        User_Action(
-            ua["source"]["page_id"],
-            ua["target"]["page_id"],
-            ua["action"]["order"]
-        ),
-    )
-
-    reward = reward_mapping[symbolic_reward]
-
-    luas.append(
-        {
-            "user_id": int(user),
-            "source_resource_id": int(source_service_id),
-            "target_resource_id": int(target_service_id),
-            "reward": float(reward),
-            "panel": ua["source"]["root"]["type"],
-            "timestamp": ua["timestamp"],
-            "source_path": ua["source"]["page_id"],
-            "target_path": ua["target"]["page_id"],
-            "type": "service",  # currently, static
-            "provider": provider["name"],  # currently, static
-            "ingestion": "batch",  # currently, static
-        }
-    )
 
 recs = []
 
@@ -307,14 +203,11 @@ elif provider["name"] == "athena":
 
 # store data to Mongo DB
 
-rsmetrics_db["user_actions"].delete_many(
-    {"provider": provider["name"], "ingestion": "batch"}
-)
-if len(luas) > 0:
-    rsmetrics_db["user_actions"].insert_many(luas)
-
 rsmetrics_db["recommendations"].delete_many(
     {"provider": provider["name"], "ingestion": "batch"}
 )
 if len(recs) > 0:
     rsmetrics_db["recommendations"].insert_many(recs)
+
+logging.info("Recommendation collection for {} stored...".format(
+    provider["name"]))
