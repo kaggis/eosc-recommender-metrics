@@ -107,6 +107,9 @@ if args.starttime:
 if args.endtime:
     args.endtime = datetime.fromisoformat(args.endtime)
 
+if not args.starttime:
+    args.starttime = datetime(1970, 1, 1)
+
 if not args.endtime:
     args.endtime = datetime.utcnow()
 
@@ -207,10 +210,19 @@ else:
 # used to create the data frames. _ids are filtered out from the column
 # results during the query
 logging.info("Reading users...")
+
 run.users = pd.DataFrame(
-    list(rsmetrics_db["users"].find({"provider": {"$in": [args.provider]}},
-                                    {"_id": 0}))
+    list(rsmetrics_db["users"].find({
+        "$and": [
+            {"provider": {"$in": [args.provider]}},
+            {"$or": [{"created_on": {"$lte": args.endtime}},
+                     {"created_on": None}]},
+            {"$or": [{"deleted_on": {"$gte": args.starttime}},
+                     {"deleted_on": None}]},
+        ]},
+        {"_id": 0}))
 )
+
 run.users.columns = [
     "User",
     "Services",
