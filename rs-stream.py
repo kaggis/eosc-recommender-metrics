@@ -160,13 +160,60 @@ def main(args):
                             created".format(user))
 
                 else:
-                    logging.info("Unknown Type of user's state")
+                    logging.info("Unknown Type of resource's state")
 
                 # add user info to streaming collection too
                 rsmetrics_db['user_events_streaming'].insert_one(message)
 
+            # Handle resource and update resources collection
             elif message['model'] == 'Service':
+                # retrieve resource id
+                resource = int(message['record']['id'])
+
+                # Update resource info
+                # if resource is deleted, update entry as in update,
+                # but also set deleted_on with timestamp
+                if message['cud'] == 'update' or message['cud'] == 'delete':
+                    record = {'name': message['record']['name'],
+                              'deleted_on': datetime.fromisoformat(
+                                  message['timestamp'].replace('Z', '+00:00'))
+                              if message['cud'] == 'delete' else None,
+                              'type': 'service',
+                              'provider': ['cyfronet', 'athena'],
+                              'ingestion': 'stream'}
+
+                    # a connection has already been established at main
+                    result = rsmetrics_db['resources'].update_one(
+                                                              {'id': resource},
+                                                              {'$set': record})
+                    if result.matched_count == 1:
+                        logging.info("The resource {} was successfully\
+                            {}d".format(
+                            resource, message['cud']))
+
+                # Create resource record
+                elif message['cud'] == 'create':
+                    record = {'id': resource,
+                              'name': message['record']['name'],
+                              'created_on': datetime.fromisoformat(
+                                  message['timestamp'].replace('Z', '+00:00')),
+                              'deleted_on': None,
+                              'type': 'service',
+                              'provider': ['cyfronet', 'athena'],
+                              'ingestion': 'stream'}
+
+                    # a connection has already been established at main
+                    result = rsmetrics_db['resources'].insert_one(record)
+                    if result.acknowledged == 1:
+                        logging.info("The resource {} was successfully \
+                            created".format(resource))
+
+                else:
+                    logging.info("Unknown Type of resource's state")
+
+                # add resource info to streaming collection too
                 rsmetrics_db['service_events_streaming'].insert_one(message)
+
             else:
                 rsmetrics_db['other_events_streaming'].insert_one(message)
 

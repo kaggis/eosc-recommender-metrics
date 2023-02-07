@@ -231,14 +231,20 @@ run.users.columns = [
     "Provider",
     "Ingestion",
 ]
+
 logging.info("Reading services...")
 run.services = pd.DataFrame(
-    list(
-        rsmetrics_db["resources"].find(
-            {"provider": {"$in": [args.provider]}}, {"_id": 0}
-        )
-    )
+    list(rsmetrics_db["resources"].find({
+        "$and": [
+            {"provider": {"$in": [args.provider]}},
+            {"$or": [{"created_on": {"$lte": args.endtime}},
+                     {"created_on": None}]},
+            {"$or": [{"deleted_on": {"$gte": args.starttime}},
+                     {"deleted_on": None}]},
+        ]},
+        {"_id": 0}))
 )
+
 run.services.columns = [
     "Service",
     "Name",
