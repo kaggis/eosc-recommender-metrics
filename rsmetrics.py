@@ -192,8 +192,6 @@ else:
          {"$unwind": "$resource_ids"}],
     ).iloc[:, 1:]
 
-run.recommendations.to_csv("~/lol.csv")
-
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
 
@@ -228,6 +226,26 @@ run.services = pd.DataFrame(
         ]},
         {"_id": 0}))
 )
+
+data_errors = []
+if len(run.user_actions_all) == 0:
+    data_errors.append("No user actions found")
+
+if len(run.user_actions_all) == 0:
+    data_errors.append("No recommendations found")
+
+if len(run.services) == 0:
+    data_errors.append("No services found")
+
+if len(run.users) == 0:
+    data_errors.append("No users found")
+
+if data_errors:
+    for data_error in data_errors:
+        logging.error(data_error)
+    logging.error("Not enough data. Skipping computations!")
+    sys.exit(1)
+
 
 # convert timestamp column to datetime object
 run.user_actions_all["timestamp"] = (
