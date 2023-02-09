@@ -105,13 +105,14 @@ if args.starttime:
     args.starttime = datetime.fromisoformat(args.starttime)
 
 if args.endtime:
-    args.endtime = datetime.fromisoformat(args.endtime)
+    edt = datetime.fromisoformat(args.endtime)
+    args.endtime = datetime.combine(edt, datetime.max.time())
 
-if not args.starttime:
-    args.starttime = datetime(1970, 1, 1)
+# if not args.starttime:
+#     args.starttime = datetime(1970, 1, 1)
 
-if not args.endtime:
-    args.endtime = datetime.utcnow()
+# if not args.endtime:
+#     args.endtime = datetime.utcnow()
 
 if args.starttime and args.endtime:
     if args.endtime < args.starttime:
@@ -134,27 +135,32 @@ datastore = pymongo.MongoClient(config["datastore"],
 # use db
 rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 
+# establish a matching query to select data for correct provider and
+# start/end date
+match_query = {}
+if args.starttime is not None:
+    if "timestamp" not in match_query:
+        match_query["timestamp"] = {}
+    match_query["timestamp"]["$gte"] = args.starttime
+
+if args.endtime is not None:
+    if "timestamp" not in match_query:
+        match_query["timestamp"] = {}
+    match_query["timestamp"]["$lte"] = args.endtime
+
+# merge dictionaries to create two seperate match queries (one for user
+# actions and one for rec)
+match_ua = {**match_query, "provider": {"$in": [args.provider]}}
+match_rs = {**match_query, "provider": args.provider}
+
 # first column (_id) ignored, where iloc is used
 # pymongoarrow lib provides efficient and direct load of query results into
 # panda data frames using functions such as find_pandas_all and
 # aggregate_pandas_all
 logging.info("Reading user actions...")
 run.user_actions_all = find_pandas_all(
-    rsmetrics_db["user_actions"], {"provider": {"$in": [args.provider]}}
+    rsmetrics_db["user_actions"], match_ua
 ).iloc[:, 1:]
-run.user_actions_all.columns = [
-    "User",
-    "Source_Service",
-    "Target_Service",
-    "Reward",
-    "Action",
-    "Timestamp",
-    "Source_Page_ID",
-    "Target_Page_ID",
-    "Type",
-    "Provider",
-    "Ingestion",
-]
 
 logging.info("Reading recommendations...")
 if args.provider == "athena":
@@ -162,7 +168,7 @@ if args.provider == "athena":
     run.recommendations = aggregate_pandas_all(
         rsmetrics_db["recommendations"],
         [
-            {"$match": {"provider": args.provider}},
+            {"$match":  match_rs},
             {
                 "$addFields": {
                     "x": {"$zip": {"inputs": ["$resource_ids",
@@ -179,32 +185,17 @@ if args.provider == "athena":
         ],
     ).iloc[:, 1:-1]
 
-    print(run.recommendations)
-
-    run.recommendations.columns = [
-        "User",
-        "Service",
-        "Score",
-        "Timestamp",
-        "Type",
-        "Provider",
-        "Ingestion",
-    ]
-
 else:
     run.recommendations = aggregate_pandas_all(
         rsmetrics_db["recommendations"],
-        [{"$match": {"provider": args.provider}},
+        [{"$match": match_rs},
          {"$unwind": "$resource_ids"}],
     ).iloc[:, 1:]
-    run.recommendations.columns = [
-        "User",
-        "Service",
-        "Timestamp",
-        "Type",
-        "Provider",
-        "Ingestion",
-    ]
+
+run.recommendations.to_csv("~/lol.csv")
+
+run.recommendations.rename(columns={'resource_ids': 'resource_id'},
+                           inplace=True)
 
 # Due to the users and services data having nested fields and small number of
 # results (hundreds to a couple of thousands) the pymongoarrow lib is not
@@ -224,14 +215,6 @@ run.users = pd.DataFrame(
         {"_id": 0}))
 )
 
-run.users.columns = [
-    "User",
-    "Services",
-    "Created_on",
-    "Deleted_on",
-    "Provider",
-    "Ingestion",
-]
 
 logging.info("Reading services...")
 run.services = pd.DataFrame(
@@ -246,69 +229,39 @@ run.services = pd.DataFrame(
         {"_id": 0}))
 )
 
-run.services.columns = [
-    "Service",
-    "Name",
-    "Page",
-    "Created_on",
-    "Deleted_on",
-    "Type",
-    "Provider",
-    "Ingestion",
-]
-
 # convert timestamp column to datetime object
-run.user_actions_all["Timestamp"] = (
-    pd.to_datetime(run.user_actions_all["Timestamp"])
+run.user_actions_all["timestamp"] = (
+    pd.to_datetime(run.user_actions_all["timestamp"])
 )
 
-run.recommendations["Timestamp"] = (
-    pd.to_datetime(run.recommendations["Timestamp"])
+run.recommendations["timestamp"] = (
+    pd.to_datetime(run.recommendations["timestamp"])
 )
-
-# restrict user actions and recommendations data to datetime range
-if args.starttime:
-    run.user_actions_all = run.user_actions_all[
-        (run.user_actions_all["Timestamp"] > args.starttime)
-        & (run.user_actions_all["Timestamp"] < args.endtime)
-    ]
-    run.recommendations = run.recommendations[
-        (run.recommendations["Timestamp"] > args.starttime)
-        & (run.recommendations["Timestamp"] < args.endtime)
-    ]
-
-else:
-    run.user_actions_all = run.user_actions_all[
-        run.user_actions_all["Timestamp"] < args.endtime
-    ]
-    run.recommendations = run.recommendations[
-        run.recommendations["Timestamp"] < args.endtime
-    ]
 
 # remove user actions when user or service does not exist in users' or
 # services' catalogs adding -1 in all catalogs indicating the anonynoums
 # users or not-known services
 run.user_actions = run.user_actions_all[
-    run.user_actions_all["User"].isin(run.users["User"].tolist() + [-1])
+    run.user_actions_all["user_id"].isin(run.users["id"].tolist() + [-1])
 ]
 run.user_actions = run.user_actions[
-    (run.user_actions["Source_Service"]
-     .isin(run.services["Service"].tolist() + [-1]))
+    (run.user_actions["source_resource_id"]
+     .isin(run.services["id"].tolist() + [-1]))
 ]
 run.user_actions = run.user_actions[
-    (run.user_actions["Target_Service"]
-     .isin(run.services["Service"].tolist() + [-1]))
+    (run.user_actions["target_resource_id"]
+     .isin(run.services["id"].tolist() + [-1]))
 ]
 
 # remove recommendations when user or service does not exist in users' or
 # services' catalogs adding -1 in all catalogs indicating the anonynoums users
 # or not-known services
 run.recommendations = run.recommendations[
-    run.recommendations["User"].isin(run.users["User"].tolist() + [-1])
+    run.recommendations["user_id"].isin(run.users["id"].tolist() + [-1])
 ]
 run.recommendations = run.recommendations[
-    (run.recommendations["Service"]
-     .isin(run.services["Service"].tolist() + [-1]))
+    (run.recommendations["resource_id"]
+     .isin(run.services["id"].tolist() + [-1]))
 ]
 
 run.provider = args.provider
@@ -359,6 +312,7 @@ jsonstr = json.dumps(output, indent=4)
 rsmetrics_db["metrics"].delete_many({"provider": args.provider})
 rsmetrics_db["metrics"].insert_one(output)
 
-logging.info(jsonstr)
+# result in stdout console (not in logs)
+print(jsonstr)
 logging.info("Metrics computation finished for {}...".format(
     args.provider))
