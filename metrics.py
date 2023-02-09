@@ -45,8 +45,8 @@ def start(object):
     """
     return str(
         min(
-            min(object.user_actions["Timestamp"]),
-            min(object.recommendations["Timestamp"]),
+            min(object.user_actions["timestamp"]),
+            min(object.recommendations["timestamp"]),
         )
     )
 
@@ -60,8 +60,8 @@ def end(object):
     """
     return str(
         max(
-            max(object.user_actions["Timestamp"]),
-            max(object.recommendations["Timestamp"]),
+            max(object.user_actions["timestamp"]),
+            max(object.recommendations["timestamp"]),
         )
     )
 
@@ -73,7 +73,7 @@ def users(object):
     found in Pandas DataFrame object users (if provided)
     or user_actions otherwise
     """
-    return int(object.users["User"].nunique())
+    return int(object.users["id"].nunique())
 
 
 @statistic("The total number of unique published services in the system")
@@ -83,7 +83,7 @@ def services(object):
     found in Pandas DataFrame object services (if provided)
     or user_actions otherwise (from both Source and Target Service)
     """
-    return int(object.services["Service"].nunique())
+    return int(object.services["id"].nunique())
 
 
 @statistic("The total number of recommended items")
@@ -101,7 +101,7 @@ def recommended_items_to_registered_users(object):
     Calculate the total number of recommendations for registered users
     found in Pandas DataFrame object recommendations
     """
-    return len(object.recommendations[object.recommendations["User"] != -1]
+    return len(object.recommendations[object.recommendations["user_id"] != -1]
                .index)
 
 
@@ -161,7 +161,7 @@ def user_actions_registered(object):
     Calculate the total number of user_actions occurred by registered users
     found in Pandas DataFrame object user_actions
     """
-    return len(object.user_actions[object.user_actions["User"] != -1].index)
+    return len(object.user_actions[object.user_actions["user_id"] != -1].index)
 
 
 @statistic("The total number of user actions occurred by anonymous users")
@@ -206,7 +206,7 @@ def user_actions_order(object):
     Calculate the total number of user_actions led to order
     found in Pandas DataFrame object user_actions
     """
-    return len(object.user_actions[object.user_actions["Reward"] == 1.0].index)
+    return len(object.user_actions[object.user_actions["reward"] == 1.0].index)
 
 
 @statistic("The total number of user actions led to order by registered users")
@@ -217,8 +217,8 @@ def user_actions_order_registered(object):
     """
     return len(
         object.user_actions[
-            (object.user_actions["Reward"] == 1.0) &
-            (object.user_actions["User"] != -1)
+            (object.user_actions["reward"] == 1.0) &
+            (object.user_actions["user_id"] != -1)
         ].index
     )
 
@@ -271,7 +271,7 @@ def user_actions_panel(object):
     """
     return len(
         object.user_actions[
-            object.user_actions["Action"] == "recommendation_panel"
+            object.user_actions["panel"] == "recommendation_panel"
         ].index
     )
 
@@ -294,7 +294,7 @@ def total_unique_recommended_items(object):
     """
     Calculate the total number of unique items found in recommendations
     """
-    return int(object.recommendations.nunique()["Service"])
+    return int(object.recommendations.nunique()["resource_id"])
 
 
 @metric("The percentage (%) of unique services  to the total number "
@@ -313,7 +313,7 @@ def total_unique_users_recommended(object):
     """
     Calculate the total number of unique users found in recommendations
     """
-    return int(object.recommendations.nunique()["User"])
+    return int(object.recommendations.nunique()["user_id"])
 
 
 @metric("The percentage (%) of unique users to the total number of users")
@@ -403,24 +403,16 @@ def click_through_rate(object):
     """
 
     # get user actions
-    user_actions_all = object.user_actions_all.values.tolist()
+    user_actions_recpanel_views = object.user_actions[
+        object.user_actions['source_path'].isin(
+            ['/services', '/services/']
+        ) |
+        object.user_actions['source_path'].str.startswith('/services/c/')
+    ]
 
-    # filter only user actions with the needed source paths
-    # (/services, /services/, /services/c/...).
-    # source paths are on the [6] index of each list item
-    user_actions_recpanel_views = list(
-        filter(
-            lambda x: x[6] in ["/services", "/services/"]
-            or x[6].startswith("/services/c/"),
-            user_actions_all,
-        )
-    )
-
-    # further filter with those actions that they have 'recommender'
-    user_actions_recpanel_clicks = list(
-        filter(lambda x: x[4] == "recommendation_panel",
-               user_actions_recpanel_views)
-    )
+    user_actions_recpanel_clicks = user_actions_recpanel_views[
+        user_actions_recpanel_views['panel'] == 'recommendation_panel'
+    ]
 
     return round(
         len(user_actions_recpanel_clicks) / len(user_actions_recpanel_views), 2
@@ -443,7 +435,9 @@ def diversity(object, anonymous=False):
     if anonymous:
         recs = object.recommendations
     else:
-        recs = object.recommendations[(object.recommendations["User"] != -1)]
+        recs = object.recommendations[
+            (object.recommendations["user_id"] != -1)
+        ]
 
     # this variable keeps the sum of user_norm (where user_norm is
     # the count of how many times a User has been suggested)
@@ -457,12 +451,12 @@ def diversity(object, anonymous=False):
     # item_count
     # group recommendations entries by service id and
     # then count how many times each service has been suggested
-    gr_service = recs.groupby(["Service"]).count()
+    gr_service = recs.groupby(["resource_id"]).count()
 
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["User"].to_dict()
+    d_service = gr_service["user_id"].to_dict()
 
     # each element represent the service's recommendations occurance
     # e.g. [1,6,7]
@@ -490,11 +484,11 @@ def novelty(object):
     """Calculate novelty of recommendations
     using the n=SUM(-log(p(i)))/|R| formula"""
     # published services
-    services_pub = object.services["Service"]
+    services_pub = object.services["id"]
     # recommended services to authenticated users
     services_rec = (object
-                    .recommendations[object.recommendations["User"] != -1]
-                    ["Service"])
+                    .recommendations[object.recommendations["user_id"] != -1]
+                    ["resource_id"])
 
     # services that are published and recommended
     services_recpub = services_rec[services_rec
@@ -505,13 +499,13 @@ def novelty(object):
     # user actions filtered if src and target the same. Also filter out
     # if target equals -1 and filter out anonymous users
     ua_serv_view = ua[
-        (ua["Source_Service"] != ua["Target_Service"])
-        & (ua["Target_Service"] != -1)
-        & (ua["User"] != -1)
+        (ua["source_resource_id"] != ua["target_resource_id"])
+        & (ua["target_resource_id"] != -1)
+        & (ua["user_id"] != -1)
     ]
 
     # count service views by service id (sorted by service id)
-    services_viewed = (ua_serv_view["Target_Service"]
+    services_viewed = (ua_serv_view["target_resource_id"]
                        .value_counts().sort_index())
 
     # create a table for each recommended service with columns
@@ -553,7 +547,9 @@ def diversity_gini(object, anonymous=False):
     if anonymous:
         recs = object.recommendations
     else:
-        recs = object.recommendations[(object.recommendations["User"] != -1)]
+        recs = object.recommendations[
+            (object.recommendations["user_id"] != -1)
+        ]
 
     # this variable keeps the sum of user_norm (where user_norm is
     # the count of how many times a User has been suggested)
@@ -565,12 +561,12 @@ def diversity_gini(object, anonymous=False):
     # item_count
     # group recommendations entries by service id and
     # then count how many times each service has been suggested
-    gr_service = recs.groupby(["Service"]).count()
+    gr_service = recs.groupby(["resource_id"]).count()
 
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["User"].to_dict()
+    d_service = gr_service["user_id"].to_dict()
 
     # total number of recommended services
     n_recommended_items = len(d_service)
@@ -617,17 +613,19 @@ def top5_services_recommended(
     if anonymous:
         recs = object.recommendations
     else:
-        recs = object.recommendations[(object.recommendations["User"] != -1)]
+        recs = object.recommendations[
+            (object.recommendations["user_id"] != -1)
+        ]
 
     # item_count
     # group recommendations entries by service id and
     # then count how many times each service has been suggested
-    gr_service = recs.groupby(["Service"]).count()
+    gr_service = recs.groupby(["resource_id"]).count()
 
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["User"].to_dict()
+    d_service = gr_service["user_id"].to_dict()
 
     # convert dictionary to double list (list of lists)
     # where the sublist is <service_id> <item_count>
@@ -644,7 +642,7 @@ def top5_services_recommended(
         # get service's info from dataframe
         _df_service = (object
                        .services[(object
-                                  .services["Service"]
+                                  .services["id"]
                                   .isin([service[0]]))])
 
         # append a list with the elements:
@@ -658,8 +656,8 @@ def top5_services_recommended(
         topk_services.append(
             {
                 "service_id": service[0],
-                "service_name": str(_df_service["Name"].item()),
-                "service_url": base + str(_df_service["Page"].item()),
+                "service_name": str(_df_service["name"].item()),
+                "service_url": base + str(_df_service["path"].item()),
                 "recommendations": {
                     "value": service[1],
                     "percentage": round(100 * service[1] / len(recs.index), 2),
@@ -694,25 +692,25 @@ def top5_services_ordered(
     # are being ignored
     if anonymous:
         uas = object.user_actions[
-            (object.user_actions["Reward"] == 1.0)
-            & (object.user_actions["Target_Service"] != -1)
-            & (object.user_actions["User"] != -1)
+            (object.user_actions["reward"] == 1.0)
+            & (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["user_id"] != -1)
         ]
     else:
         uas = object.user_actions[
-            (object.user_actions["Reward"] == 1.0)
-            & (object.user_actions["Target_Service"] != -1)
+            (object.user_actions["reward"] == 1.0)
+            & (object.user_actions["target_resource_id"] != -1)
         ]
 
     # item_count
     # group user_actions entries by service id and
     # then count how many times each service has been suggested
-    gr_service = uas.groupby(["Target_Service"]).count()
+    gr_service = uas.groupby(["target_resource_id"]).count()
 
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["User"].to_dict()
+    d_service = gr_service["user_id"].to_dict()
 
     # convert dictionary to double list (list of lists)
     # where the sublist is <service_id> <item_count>
@@ -727,7 +725,7 @@ def top5_services_ordered(
 
     for service in l_service:
         # get service's info from dataframe
-        _df_service = object.services[object.services["Service"]
+        _df_service = object.services[object.services["id"]
                                       .isin([service[0]])]
         # append a list with the elements:
         #   (i) service id
@@ -740,8 +738,8 @@ def top5_services_ordered(
         topk_services.append(
             {
                 "service_id": service[0],
-                "service_name": str(_df_service["Name"].item()),
-                "service_url": base + str(_df_service["Page"].item()),
+                "service_name": str(_df_service["name"].item()),
+                "service_url": base + str(_df_service["path"].item()),
                 "orders": {
                     "value": service[1],
                     "percentage": round(100 * service[1] / len(uas.index), 2),
@@ -762,7 +760,7 @@ def recommended_items_per_day(object):
     # count recommendations for each day found in entries
     res = (
         object.recommendations.groupby(by=object
-                                       .recommendations["Timestamp"].dt.date)
+                                       .recommendations["timestamp"].dt.date)
         .count()
         .iloc[:, 0]
     )
@@ -821,7 +819,7 @@ def user_actions_per_day(object):
 
     # count user_actions for each day found in entries
     res = (
-        object.user_actions.groupby(by=object.user_actions["Timestamp"]
+        object.user_actions.groupby(by=object.user_actions["timestamp"]
                                     .dt.date)
         .count()
         .iloc[:, 0]
@@ -877,7 +875,7 @@ def accuracy(object):
     by the total number of predictions.
     """
     # a list of unique services' ids found in Datastore
-    services_list = object.services["Service"].unique().tolist()
+    services_list = object.services["id"].unique().tolist()
     # the length of the above value
     len_services = services(object)
 
@@ -893,18 +891,18 @@ def accuracy(object):
         # else for each service found in services_list,
         # put 1 or 0 if it is also found in the accessed or
         # recommended services respectively
-        if not x["Services"]:
+        if not x["accessed_resources"]:
             true_values = np.array([0] * len_services)
         else:
             true_values = np.array(
-                list(map(lambda s: 1 if s in x["Services"] else 0,
+                list(map(lambda s: 1 if s in x["accessed_resources"] else 0,
                      services_list))
             )
-        if not x["Service"]:
+        if not x["resource_id"]:
             pred_values = np.array([0] * len_services)
         else:
             pred_values = np.array(
-                list(map(lambda s: 1 if s in x["Service"] else 0,
+                list(map(lambda s: 1 if s in x["resource_id"] else 0,
                      services_list))
             )
 
@@ -913,25 +911,26 @@ def accuracy(object):
         # The returned array is a True/False array when the respective
         # element of true_values is equal or not to the respective
         # element of pred_values
-        x["Services"] = np.average(true_values == pred_values)
-        # return the row, where the 'Services' column has the accuracy
+        x["resource_id"] = np.average(true_values == pred_values)
+        # return the row, where the 'resources' column has the accuracy
         # score now
         return x
 
     # a matrix of User ids and the respective accessed services' ids
-    access_df = object.users[["User", "Services"]]
+    access_df = object.users[["id", "accessed_resources"]]
 
     # a matrix of User ids and the respective recommended services' ids
     rec_df = (
-        object.recommendations[["User", "Service"]]
-        .groupby(["User"])
-        .agg({"Service": lambda x: x.unique().tolist()})
+        object.recommendations[["user_id", "resource_id"]]
+        .groupby(["user_id"])
+        .agg({"resource_id": lambda x: x.unique().tolist()})
         .reset_index()
     )
 
     # performs a left join on User id, which means that nan values
     # are set for cases where no recommendations were made
-    data = pd.merge(access_df, rec_df, on="User", how="left")
+    data = pd.merge(access_df, rec_df, left_on="id", right_on="user_id",
+                    how="left")
     # convert nan values to zeros, in order to be handled easily
     # by the inner function
     data.fillna(0, inplace=True)
@@ -940,4 +939,4 @@ def accuracy(object):
 
     # return the mean value of all users' accuracy score
     # up to 4 digits precision
-    return round(data["Services"].mean(), 4)
+    return round(data["resource_id"].mean(), 4)
