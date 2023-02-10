@@ -230,7 +230,9 @@ def main(args):
     resources = rsmetrics_db["resources"].find({}, {"_id": 0,
                                                "path": 1, "id": 1})
     for item in resources:
-        resource_lookup[item["path"]] = item["id"]
+        # if the service item has indeed an updated path (url) grab it
+        if "path" in item:
+            resource_lookup[item["path"]] = item["id"]
 
     # create the connection to the queue
     msg_queue = stomp.Connection([(host, port)], heartbeats=(10000, 5000))
