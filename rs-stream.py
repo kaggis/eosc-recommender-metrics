@@ -226,7 +226,7 @@ def main(args):
     username, password = args.auth.split(":")
     host, port = args.queue.split(":")
 
-    # get resources (services for the time being)
+    # get all resources (services for the time being)
     resources = rsmetrics_db["resources"].find({}, {"_id": 0,
                                                "path": 1, "id": 1})
     for item in resources:
