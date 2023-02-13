@@ -178,6 +178,10 @@ def main(args):
                               'deleted_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00'))
                               if message['cud'] == 'delete' else None,
+                              'scientific_domain':
+                              message['record']['scientific_domains'],
+                              'category':
+                              message['record']['categories'],
                               'type': 'service',
                               'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
@@ -198,6 +202,9 @@ def main(args):
                               'created_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00')),
                               'deleted_on': None,
+                              'scientific_domain':
+                              message['record']['scientific_domains'],
+                              'category': message['record']['categories'],
                               'type': 'service',
                               'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
