@@ -17,7 +17,7 @@ pipeline {
          stage('Python syntax style checks') {
             agent {
                 docker {
-                    image 'argo.registry:5000/epel-7-ams'
+                    image 'argo.registry:5000/python3'
                     args '-u jenkins:jenkins'
                 }
             }
