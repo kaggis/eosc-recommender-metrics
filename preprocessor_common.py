@@ -199,7 +199,26 @@ names = list(map(lambda x: x[1], eosc_service_results))
 
 rdmap = dict(zip(ids, zip(keys, names)))
 
-# A. Working on users
+# A. Working on scientific domains and categories
+
+for col in ['scientific_domain', 'category']:
+    data = recdb[col].find({})
+    data = list(
+        map(
+            lambda x: {
+                "id": int(str(x["_id"])),
+                "name": str(x["name"]),
+            },
+            data,
+        )
+    )
+
+    rsmetrics_db[col].drop()
+    rsmetrics_db[col].insert_many(data)
+
+    logging.info("{} collection stored...".format(col))
+
+# B. Working on users
 
 # 1) produce users csv with each user id along with the user's accessed
 # services
@@ -233,60 +252,35 @@ rsmetrics_db["users"].insert_many(users)
 
 logging.info("Users collection stored...")
 
-# B. Working on resources
+# D. Working on resources
 
-if config["service"]["from"] == "page_map":
+remote_resources = {}
+for d in recdb["service"].find({}, {'_id': 1, 'categories': 1,
+                                    'scientific_domains': 1}):
+    remote_resources[d['_id']] = (d['scientific_domains'], d['categories'])
 
-    _ss = natsorted(list(set(list(map(lambda x: x + "\n", ids)))),
-                    alg=ns.ns.SIGNED)
-    resources = []
-    for s in _ss:
-        resources.append(
-            {
-                "id": int(s.strip()),
-                "name": rdmap[s.strip()][1],
-                "path": rdmap[s.strip()][0],
-                "created_on": None,
-                "deleted_on": None,
-                "type": "service",  # currently, static
-                "provider": ["cyfronet", "athena"],  # currently, static
-                "ingestion": "batch",  # currently, static
-            }
-        )
+_ss = natsorted(list(set(list(map(lambda x: x + "\n", ids)))),
+                alg=ns.ns.SIGNED)
 
-else:  # 'source'
-    _query = ""
-    if config["service"]["published"]:
-        _query = {"status": "published"}
-
-    _ss = natsorted(
-        list(
-            set(
-                list(
-                    map(
-                        lambda x: (str(x["_id"])
-                                   + ',"' + str(x["name"]) + '"\n'),
-                        recdb["service"].find(_query),
-                    )
-                )
-            )
-        ),
-        alg=ns.ns.SIGNED,
-    )
-    resources = []
-    for s in _ss:
-        resources.append(
-            {
-                "id": int(s.split(",")[0]),
-                "name": rdmap[s.split(",")[0]][1],
-                "path": rdmap[s.split(",")[0]][0],
-                "created_on": None,
-                "deleted_on": None,
-                "type": "service",  # currently, static
-                "provider": ["cyfronet", "athena"],  # currently, static
-                "ingestion": "batch",  # currently, static
-            }
-        )
+resources = []
+for s in _ss:
+    try:
+        resources.append({
+            "id": int(s.strip()),
+            "name": rdmap[s.strip()][1],
+            "path": rdmap[s.strip()][0],
+            "created_on": None,
+            "deleted_on": None,
+            "scientific_domain": remote_resources.setdefault(int(s.strip()),
+                                                             (None, None))[0],
+            "category": remote_resources.setdefault(int(s.strip()),
+                                                    (None, None))[1],
+            "type": "service",  # currently, static
+            "provider": ["cyfronet", "athena"],  # currently, static
+            "ingestion": "batch",  # currently, static
+        })
+    except Exception as e:
+        logging.error('Could not collect resource with id {}'.format(e))
 
 rsmetrics_db["resources"].delete_many(
     {
@@ -298,7 +292,7 @@ rsmetrics_db["resources"].insert_many(resources)
 
 logging.info("Resources collection stored...")
 
-# C. Working on user_actions
+# E. Working on user_actions
 
 
 class Mock:
@@ -348,6 +342,8 @@ resources.columns = [
     "Page",
     "Created_on",
     "Deleted_on",
+    "Scientific_domain",
+    "Category",
     "Type",
     "Provider",
     "Ingestion",

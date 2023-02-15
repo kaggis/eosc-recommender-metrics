@@ -21,10 +21,4 @@ service:
     # and also in metrics calculations where service is considered
     published: true
 
-    # which origin to use to retrieve Resources
-    # two options available:
-    # - 'source': use the Connector
-    # - 'page_map': use the EOSC Marketplace
-    from: 'page_map' # or 'source'
-
 
