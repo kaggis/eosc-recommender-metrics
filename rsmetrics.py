@@ -227,6 +227,12 @@ run.services = pd.DataFrame(
         {"_id": 0}))
 )
 
+logging.info("Reading categories...")
+run.categories = pd.DataFrame(
+                              list(rsmetrics_db["category"].find({},
+                                   {"_id": 0}))
+)
+
 data_errors = []
 if len(run.user_actions_all) == 0:
     data_errors.append("No user actions found")
@@ -239,6 +245,9 @@ if len(run.services) == 0:
 
 if len(run.users) == 0:
     data_errors.append("No users found")
+
+if len(run.categories) == 0:
+    data_errors.append("No categories found")
 
 if data_errors:
     for data_error in data_errors:
