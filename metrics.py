@@ -1028,6 +1028,103 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     return topk_scientific_domains
 
 
+@metric("The Top 5 ordered scientific domains according to user actions \
+entries")
+def top5_scientific_domains_ordered(object, k=5, anonymous=False):
+    """
+    Calculate the Top 5 ordered sc. domains according to user actions entries.
+    Return a list of list with the elements:
+        #  (i) scientific domain id
+        #  (ii) sc. domain name (according to scientific domain collection)
+        #  (iii) total number of orders of the scientific domain
+        #  (iv) percentage of the (iii) to the total number of orders
+        #       expressed in %, with or without anonymous,
+        #       based on the function's flag
+    Sc. domain's info is being retrieved from the Cyfronet MongoDB source
+    """
+    # keep user actions with or without anonymous suggestions
+    # based on anonymous flag (default=False, i.e. ignore anonymous)
+    # user_actions with Target Pages that lead to unknown services (=-1)
+    # are being ignored
+    if anonymous:
+        uas = object.user_actions[
+            (object.user_actions["reward"] == 1.0)
+            & (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["user_id"] != -1)
+        ]
+    else:
+        uas = object.user_actions[
+            (object.user_actions["reward"] == 1.0)
+            & (object.user_actions["target_resource_id"] != -1)
+        ]
+
+    # rename the column at a copy (not in place) for more readable processing
+    _services = object.services.rename(columns={'id': 'target_resource_id'})
+
+    # create an inner join between the recommendations collection
+    # and the services collection
+    # since a scientific domain is a list of scientific domain ids
+    # the rows are further expanded (exploded) into rows per sc. domain id
+    # inner join means that sc. domains must exist in both services collection
+    # and recommendations collection
+    merged = uas.merge(_services, on='target_resource_id')
+    exp = merged.explode('scientific_domain')
+
+    # count the total orders where the associated services have sc. domains
+    total = len(merged.dropna(subset=['scientific_domain']))
+
+    # count scientific domains' ids and covert pandas series to dataframe
+    # user_id holds the same values with all other columns
+    # it is just the first column
+    cat = exp.groupby(["scientific_domain"])['user_id'].count().to_frame()
+
+    # reset indexes and rename columns accordingly
+    cat = cat.reset_index().rename(columns={'scientific_domain': 'id',
+                                            'user_id': 'count'})
+
+    # create a second inner join with the scientific domains
+    # in order to retrieve the name of the scientific domains
+    # inner join means that sc. domain must exist in both sc. domains
+    # and cat collection
+    full_cat = cat.merge(object.scientific_domains, on='id')
+
+    # sort based on count
+    # get top k
+    # and convert it to a list of dictionaries
+    # where each dictionary equals to the df's record,
+    # and each column of the df is the key of the dictionary
+    topk = full_cat.sort_values('count', ascending=False).head(k).to_dict(
+                                orient='records')
+
+    # create similar format to other kpis
+    topk_scientific_domains = []
+
+    for scientific_domain in topk:
+
+        # append a list with the elements:
+        #  (i) scientific_domain id
+        #  (ii) scientific_domain name (retrieved from
+        #                               scientific_domain collection)
+        #  (iii) total number of recommendations of the service
+        #  (iv) percentage of the (iii) to the total number of recommendations
+        #       expressed in %, with or without anonymous,
+        #       based on the function's flag
+        topk_scientific_domains.append(
+            {
+                "scientific_domain_id": scientific_domain['id'],
+                "scientific_domain_name": scientific_domain['name'],
+                "recommendations": {
+                    "value": scientific_domain['count'],
+                    "percentage": round(100 * scientific_domain['count']
+                                        / total, 2),
+                    "of_total": total,
+                },
+            }
+        )
+
+    return topk_scientific_domains
+
+
 @statistic("A dictionary of the number of recommended items per day")
 def recommended_items_per_day(object):
     """
