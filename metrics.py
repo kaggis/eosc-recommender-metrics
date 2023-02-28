@@ -10,6 +10,7 @@ class Runtime:
         self.user_actions = None
         self.user_actions_all = None
         self.recommendations = None
+        self.categories = None
         self.provider = None
 
 
@@ -749,6 +750,95 @@ def top5_services_ordered(
         )
 
     return topk_services
+
+
+@metric("The Top 5 recommended categories according to recommendations entries"
+        )
+def top5_categories_recommended(object, k=5, anonymous=False):
+    """
+    Calculate the Top 5 recommended categories according to
+    the recommendations entries.
+    Return a list of list with the elements:
+        #  (i) category id
+        #  (ii) category name (according to category collection)
+        #  (iii) total number of recommendations of the category
+        #  (iv) percentage of the (iii) to the total number of recommendations
+        #       expressed in %, with or without anonymous,
+        #       based on the function's flag
+    Category's info is being retrieved from the Cyfronet MongoDB source
+    """
+    # keep recommendations with or without anonymous suggestions
+    # based on anonymous flag (default=False, i.e. ignore anonymous)
+    if anonymous:
+        recs = object.recommendations
+    else:
+        recs = object.recommendations[
+            (object.recommendations["user_id"] != -1)
+        ]
+
+    # rename the column at a copy (not in place) for more readable processing
+    _services = object.services.rename(columns={'id': 'resource_id'})
+
+    # create an inner join between the recommendations collection
+    # and the services collection
+    # since a category is a list of category ids
+    # the rows are further expanded (exploded) into rows per category id
+    # inner join means that categories must exist in both services collection
+    # and recommendations collection
+    merged = recs.merge(_services, on='resource_id')
+    exp = merged.explode('category')
+
+    # count the total orders where the associated services have categories
+    total = len(merged.dropna(subset=['category']))
+
+    # count categories' ids and covert pandas series to dataframe
+    # user_id holds the same values with all other columns
+    # it is just the first column
+    cat = exp.groupby(["category"])['user_id'].count().to_frame()
+
+    # reset indexes and rename columns accordingly
+    cat = cat.reset_index().rename(columns={'category': 'id',
+                                            'user_id': 'count'})
+
+    # create a second inner join with the categories
+    # in order to retrieve the name of the categories
+    # inner join means that category must exist in both categories collection
+    # and cat collection
+    full_cat = cat.merge(object.categories, on='id')
+
+    # sort based on count
+    # get top k
+    # and convert it to a list of dictionaries
+    # where each dictionary equals to the df's record,
+    # and each column of the df is the key of the dictionary
+    topk = full_cat.sort_values('count', ascending=False).head(k).to_dict(
+                                orient='records')
+
+    # create similar format to other kpis
+    topk_categories = []
+
+    for category in topk:
+
+        # append a list with the elements:
+        #  (i) category id
+        #  (ii) category name (retrieved from category collection)
+        #  (iii) total number of recommendations of the service
+        #  (iv) percentage of the (iii) to the total number of recommendations
+        #       expressed in %, with or without anonymous,
+        #       based on the function's flag
+        topk_categories.append(
+            {
+                "category_id": category['id'],
+                "category_name": category['name'],
+                "recommendations": {
+                    "value": category['count'],
+                    "percentage": round(100 * category['count'] / total, 2),
+                    "of_total": total,
+                },
+            }
+        )
+
+    return topk_categories
 
 
 @statistic("A dictionary of the number of recommended items per day")
