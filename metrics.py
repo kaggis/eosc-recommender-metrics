@@ -1080,6 +1080,64 @@ def recommended_items_per_day(object):
     return res.to_dict(orient="records")
 
 
+@statistic("A dictionary of the number of recommended items per month")
+def recommended_items_per_month(object):
+    """
+    It returns a a timeseries of recommended item counts per month.
+    Each timeseries item has two fields: date and value
+    """
+    # count recommendations for each day found in entries
+    res = (
+        object.recommendations.groupby(by=object
+                                       .recommendations["timestamp"].dt.date)
+        .count()
+        .iloc[:, 0]
+    )
+
+    # create a Series with period's start and end times and value of 0
+    init = pd.Series(
+        [0, 0],
+        index=[
+            pd.to_datetime(start(object)).date(),
+            pd.to_datetime(end(object)).date(),
+        ],
+    )
+
+    # remove duplicate entries for corner cases where start and end time match
+    init.drop_duplicates(keep="first", inplace=True)
+
+    # append above two indexes and values (i.e. 0) to the Series
+    # with axis=1, same indexes are being merged
+    # since dataframe is created, get the first column
+    res = pd.concat([res, init], ignore_index=False, axis=1).iloc[:, 0]
+
+    # convert Nan values created by the concatenation to 0
+    # and change data type back to int
+    res = res.fillna(0).astype(int)
+
+    # fill the in between days with zero user_actions
+    res = res.asfreq("D", fill_value=0)
+
+    # resample results in Monthly granularity
+    res = res.resample('M').sum()
+
+    # convert datetimeindex to string
+    res.index = res.index.format()
+
+    # convert series to dataframe with extra column having the dates
+    res = res.to_frame().reset_index()
+
+    # rename columns to date, value
+    res.rename(columns={res.columns[0]: "date", res.columns[1]: "value"},
+               inplace=True)
+
+    # keep YYYY-MM format in date field
+    res['date'] = res['date'].str[:-3]
+
+    # return a list of objects with date and value fields
+    return res.to_dict(orient="records")
+
+
 @statistic("A dictionary of the number of user actions per day")
 def user_actions_per_day(object):
     """
@@ -1135,6 +1193,72 @@ def user_actions_per_day(object):
     # rename columns to date, value
     res.rename(columns={res.columns[0]: "date", res.columns[1]: "value"},
                inplace=True)
+
+    # return a list of objects with date and value fields
+    return res.to_dict(orient="records")
+
+
+@statistic("A dictionary of the number of user actions per month")
+def user_actions_per_month(object):
+    """
+    It returns a statistical report in dictionary format. Specifically, the key
+    is set for each specific month found and its value contains the respective
+    number of user_actions committed. The dictionary includes all in-between
+    months (obviously, with the count set to zero). User_actions are already
+    filtered by those where the user or service does not exist in users'
+    or services' catalogs.
+    """
+    # Since user_actions is in use, user actions when user
+    # or service does not exist in users' or services'
+    # catalogs have been removed
+
+    # count user_actions for each day found in entries
+    res = (
+        object.user_actions.groupby(by=object.user_actions["timestamp"]
+                                    .dt.date)
+        .count()
+        .iloc[:, 0]
+    )
+
+    # create a Series with period's start and end times and value of 0
+    init = pd.Series(
+        [0, 0],
+        index=[
+            pd.to_datetime(start(object)).date(),
+            pd.to_datetime(end(object)).date(),
+        ],
+    )
+
+    # remove duplicate entries for corner cases where start and end time match
+    init.drop_duplicates(keep="first", inplace=True)
+
+    # append above two indexes and values (i.e. 0) to the Series
+    # with axis=1, same indexes are being merged
+    # since dataframe is created, get the first column
+    res = pd.concat([res, init], ignore_index=False, axis=1).iloc[:, 0]
+
+    # convert Nan values created by the concatenation to 0
+    # and change data type back to int
+    res = res.fillna(0).astype(int)
+
+    # fill the in between days with zero user_actions
+    res = res.asfreq("D", fill_value=0)
+
+    # resample results in Monthly granularity
+    res = res.resample('M').sum()
+
+    # convert datetimeindex to string
+    res.index = res.index.format()
+
+    # convert series to dataframe with extra column having the dates
+    res = res.to_frame().reset_index()
+
+    # rename columns to date, value
+    res.rename(columns={res.columns[0]: "date", res.columns[1]: "value"},
+               inplace=True)
+
+    # keep YYYY-MM format in date field
+    res['date'] = res['date'].str[:-3]
 
     # return a list of objects with date and value fields
     return res.to_dict(orient="records")

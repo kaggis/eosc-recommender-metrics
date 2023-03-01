@@ -214,6 +214,28 @@
                         <div class="col-md-6">
                             <div class="card mb-3 main-card">
                                 <div class="card-body">
+                                    <div class="card-header">User actions per month</div>
+                                    <div id="chart-user-actions-month"></div>
+                                </div>
+                               
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card mb-3 main-card">
+                                <div class="card-body">
+                                    <div class="card-header">Recommended items per month</div>
+                                    <div id="chart-rec-items-month"></div>
+                                </div>
+                               
+                            </div>
+                        </div>
+                    </div> <!-- row -->
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3 main-card">
+                                <div class="card-body">
                                     <div class="card-header">User actions per day</div>
                                     <div id="chart-user-actions"></div>
                                 </div>
@@ -231,6 +253,7 @@
                             </div>
                         </div>
                     </div> <!-- row -->
+                    
 
                     <div class="app-footer-right">
                         {% set timestamp_data = data.timestamp.split('.')[0].split(' ') %}
@@ -334,13 +357,25 @@
         };
 
         // Do a fetch to the api for user actions per day and draw the chart
-        fetch("/api/reports/"+report+"/statistics/user_actions_per_day", requestOptions)
+        fetch("/api/reports/"+report+"/statistics/user_actions_per_month", requestOptions)
+        .then(response => response.json())
+        .then(result => renderTimeseries(result,'chart-user-actions-month','#FFA15A'))
+        .catch(error => console.log('error', error)); 
+
+       // Do a fetch to the api for recommended items per day and draw the chart
+       fetch("/api/reports/"+report+"/statistics/recommended_items_per_month", requestOptions)
+        .then(response => response.json())
+        .then(result => renderTimeseries(result,'chart-rec-items-month','#1F77B4'))
+        .catch(error => console.log('error', error)); 
+
+       // Do a fetch to the api for user actions per day and draw the chart
+       fetch("/api/reports/"+report+"/statistics/user_actions_per_day", requestOptions)
         .then(response => response.json())
         .then(result => renderTimeseries(result,'chart-user-actions','#FFA15A'))
         .catch(error => console.log('error', error)); 
 
-       // Do a fetch to the api for recommended items per day and draw the chart
-       fetch("/api/reports/"+report+"/statistics/recommended_items_per_day", requestOptions)
+     // Do a fetch to the api for recommended items per day and draw the chart
+     fetch("/api/reports/"+report+"/statistics/recommended_items_per_day", requestOptions)
         .then(response => response.json())
         .then(result => renderTimeseries(result,'chart-rec-items','#1F77B4'))
         .catch(error => console.log('error', error)); 
