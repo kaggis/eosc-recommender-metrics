@@ -233,6 +233,12 @@ run.categories = pd.DataFrame(
                                    {"_id": 0}))
 )
 
+logging.info("Reading scientific domains...")
+run.scientific_domains = pd.DataFrame(
+                              list(rsmetrics_db["scientific_domain"].find({},
+                                   {"_id": 0}))
+)
+
 data_errors = []
 if len(run.user_actions_all) == 0:
     data_errors.append("No user actions found")
@@ -248,6 +254,9 @@ if len(run.users) == 0:
 
 if len(run.categories) == 0:
     data_errors.append("No categories found")
+
+if len(run.scientific_domains) == 0:
+    data_errors.append("No scientific domains found")
 
 if data_errors:
     for data_error in data_errors:
