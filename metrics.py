@@ -926,7 +926,7 @@ def top5_categories_ordered(object, k=5, anonymous=False):
             {
                 "category_id": category['id'],
                 "category_name": category['name'],
-                "recommendations": {
+                "orders": {
                     "value": category['count'],
                     "percentage": round(100 * category['count'] / total, 2),
                     "of_total": total,
@@ -1113,7 +1113,7 @@ def top5_scientific_domains_ordered(object, k=5, anonymous=False):
             {
                 "scientific_domain_id": scientific_domain['id'],
                 "scientific_domain_name": scientific_domain['name'],
-                "recommendations": {
+                "orders": {
                     "value": scientific_domain['count'],
                     "percentage": round(100 * scientific_domain['count']
                                         / total, 2),

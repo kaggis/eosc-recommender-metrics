@@ -189,6 +189,10 @@ def html_kpis(provider_name):
         "click_through_rate",
         "top5_services_ordered",
         "top5_services_recommended",
+        "top5_categories_ordered",
+        "top5_categories_recommended",
+        "top5_scientific_domains_ordered",
+        "top5_scientific_domains_recommended",
     ]
     for metric_name in metrics_needed:
         result[metric_name] = get_metric(provider_name, metric_name).get_json()
