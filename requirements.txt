@@ -22,9 +22,11 @@ scikit-surprise==1.1.1
 scipy==1.8.0
 six==1.16.0
 soupsieve==2.3.2
+stomp.py==8.1.0
 surprise==0.1
 urllib3==1.26.9
-Werkzeug==2.1.2
+Werkzeug==2.2.3
 zipp==3.8.0
 flask-pymongo==2.3.0
-pymongoarrow==0.6.2
+pymongoarrow==0.7.0
+flake8==6.0.0

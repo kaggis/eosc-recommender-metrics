@@ -1,9 +1,9 @@
 pipeline {
     agent { 
-        docker { 
-            image 'node:buster' 
+            docker { 
+                image 'node:buster' 
+            }
         }
-    }
     options {
         checkoutToSubdirectory('eosc-recommender-metrics')
         newContainerPerStage()
@@ -14,8 +14,30 @@ pipeline {
         GH_EMAIL = '<argo@grnet.gr>'
    }
     stages {
-    
+         stage('Python syntax style checks') {
+            agent {
+                docker {
+                    image 'argo.registry:5000/python3'
+                    args '-u jenkins:jenkins'
+                }
+            }
+            steps {
+                echo 'Checking Python syntax style with flake8'
+                sh """
+                pipenv --python 3
+                pipenv run pip install flake8
+                pipenv run python -m flake8 ./
+                pipenv --rm
+                """
+            }
+            post {
+                always {
+                    cleanWs()
+                }
+            }
+        }
         stage ('Deploy Docs') {
+           
             when {
                 anyOf {
                     branch 'master'

@@ -1,0 +1,20 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: EOSC Recommender System Metrics
+message: A framework for evaluating EOSC Recommender System. Use of additional diagnostic metrics and visualizations offering deeper and sometimes surprising insights about the models performance.
+type: software
+authors:
+  - given-names: Kostas
+    family-names: Kagkelidis
+    email: kaggis@admin.grnet.gr
+    affiliation: GRNET S.A.
+  - given-names: Nikolaos
+    family-names: Triantafyllis
+    email: ntriantafyl@admin.grnet.gr
+    affiliation: GRNET S.A.
+  - given-names: Themis
+    family-names: Zamani
+    email: themis@admin.grnet.gr
+    affiliation: GRNET S.A.

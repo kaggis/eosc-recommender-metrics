@@ -389,6 +389,236 @@
 
                     </div> <!-- row -->
 
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="main-card mb-3 card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top 5 recommended categories</h5>
+                                    <p>
+
+                                        {% for item in data.top5_categories_recommended.value %}
+                                    <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
+                                        <div class="row">
+                                            <div class="widget-content col-md-10">
+                                                <h4><b>#{{loop.index}}</b> <a
+                                                        href="{{item.service_url}}">{{item.category_name}}</a></h4>
+                                                <hr>
+                                                </hr>
+                                                <div class="widget-content-outer">
+                                                    <div class="widget-content-wrapper">
+
+                                                        <div class="widget-content-right w-100">
+                                                            <div class="progress-bar-xs progress" style="height: 20px;">
+                                                                <div class="progress-bar bg-info" role="progressbar"
+                                                                    aria-valuenow="{{item.recommendations.percentage}}"
+                                                                    aria-valuemin="0" aria-valuemax="100"
+                                                                    style="width: {{item.recommendations.percentage}}%;">
+                                                                </div>
+                                                                <h6
+                                                                    class="justify-content-center d-flex position-absolute w-100">
+                                                                    Recommended&nbsp;<b>{{item.recommendations.value}}</b>&nbsp;
+                                                                    times out of {{item.recommendations.of_total}}
+                                                                </h6>
+                                                            </div>
+                                                        </div>
+                                                        <div class="widget-content-left pe-2 fsize-1">
+                                                            <div class="widget-numbers mt-0 fsize-2 text-info">
+                                                                {{item.recommendations.percentage}}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="widget-content col-md-2" style="border-left: 1px dashed black;">
+                                                <div class="font-icon-wrapper font-icon-lg" style="border:0">
+                                                    <h2 style="color:#FFA500"><b>{{item.recommendations.value}}</b></h2>
+                                                    <h6>/{{item.recommendations.of_total}}</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {%endfor%}
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <div class="col-md-6">
+                            <div class="main-card mb-3 card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top 5 ordered categories</h5>
+                                    <p>
+
+                                        {% for item in data.top5_categories_ordered.value %}
+                                    <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
+                                        <div class="row">
+                                            <div class="widget-content col-md-10">
+                                                <h4><b>#{{loop.index}}</b> <a
+                                                        href="{{item.service_url}}">{{item.category_name}}</a></h4>
+                                                <hr>
+                                                </hr>
+                                                <div class="widget-content-outer">
+                                                    <div class="widget-content-wrapper">
+
+                                                        <div class="widget-content-right w-100">
+                                                            <div class="progress-bar-xs progress" style="height: 20px;">
+                                                                <div class="progress-bar bg-info" role="progressbar"
+                                                                    aria-valuenow="{{item.orders.percentage}}"
+                                                                    aria-valuemin="0" aria-valuemax="100"
+                                                                    style="width: {{item.orders.percentage}}%;"></div>
+                                                                <h6
+                                                                    class="justify-content-center d-flex position-absolute w-100">
+                                                                    Ordered&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
+                                                                    out of {{item.orders.of_total}}
+                                                                </h6>
+                                                            </div>
+                                                        </div>
+                                                        <div class="widget-content-left pe-2 fsize-1">
+                                                            <div class="widget-numbers mt-0 fsize-2 text-info">
+                                                                {{item.orders.percentage}}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="widget-content col-md-2" style="border-left: 1px dashed black;">
+                                                <div class="font-icon-wrapper font-icon-lg" style="border:0">
+                                                    <h2 style="color:#FFA500"><b>{{item.orders.value}}</b></h2>
+                                                    <h6>/{{item.orders.of_total}}</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {%endfor%}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div> <!-- row -->
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="main-card mb-3 card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top 5 recommended scientific domains</h5>
+                                    <p>
+
+                                        {% for item in data.top5_scientific_domains_recommended.value %}
+                                    <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
+                                        <div class="row">
+                                            <div class="widget-content col-md-10">
+                                                <h4><b>#{{loop.index}}</b> <a
+                                                        href="{{item.service_url}}">{{item.scientific_domain_name}}</a></h4>
+                                                <hr>
+                                                </hr>
+                                                <div class="widget-content-outer">
+                                                    <div class="widget-content-wrapper">
+
+                                                        <div class="widget-content-right w-100">
+                                                            <div class="progress-bar-xs progress" style="height: 20px;">
+                                                                <div class="progress-bar bg-info" role="progressbar"
+                                                                    aria-valuenow="{{item.recommendations.percentage}}"
+                                                                    aria-valuemin="0" aria-valuemax="100"
+                                                                    style="width: {{item.recommendations.percentage}}%;">
+                                                                </div>
+                                                                <h6
+                                                                    class="justify-content-center d-flex position-absolute w-100">
+                                                                    Recommended&nbsp;<b>{{item.recommendations.value}}</b>&nbsp;
+                                                                    times out of {{item.recommendations.of_total}}
+                                                                </h6>
+                                                            </div>
+                                                        </div>
+                                                        <div class="widget-content-left pe-2 fsize-1">
+                                                            <div class="widget-numbers mt-0 fsize-2 text-info">
+                                                                {{item.recommendations.percentage}}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="widget-content col-md-2" style="border-left: 1px dashed black;">
+                                                <div class="font-icon-wrapper font-icon-lg" style="border:0">
+                                                    <h2 style="color:#FFA500"><b>{{item.recommendations.value}}</b></h2>
+                                                    <h6>/{{item.recommendations.of_total}}</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {%endfor%}
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <div class="col-md-6">
+                            <div class="main-card mb-3 card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top 5 ordered scientific domains</h5>
+                                    <p>
+
+                                        {% for item in data.top5_scientific_domains_ordered.value %}
+                                    <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
+                                        <div class="row">
+                                            <div class="widget-content col-md-10">
+                                                <h4><b>#{{loop.index}}</b> <a
+                                                        href="{{item.service_url}}">{{item.scientific_domain_name}}</a></h4>
+                                                <hr>
+                                                </hr>
+                                                <div class="widget-content-outer">
+                                                    <div class="widget-content-wrapper">
+
+                                                        <div class="widget-content-right w-100">
+                                                            <div class="progress-bar-xs progress" style="height: 20px;">
+                                                                <div class="progress-bar bg-info" role="progressbar"
+                                                                    aria-valuenow="{{item.orders.percentage}}"
+                                                                    aria-valuemin="0" aria-valuemax="100"
+                                                                    style="width: {{item.orders.percentage}}%;"></div>
+                                                                <h6
+                                                                    class="justify-content-center d-flex position-absolute w-100">
+                                                                    Ordered&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
+                                                                    out of {{item.orders.of_total}}
+                                                                </h6>
+                                                            </div>
+                                                        </div>
+                                                        <div class="widget-content-left pe-2 fsize-1">
+                                                            <div class="widget-numbers mt-0 fsize-2 text-info">
+                                                                {{item.orders.percentage}}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="widget-content col-md-2" style="border-left: 1px dashed black;">
+                                                <div class="font-icon-wrapper font-icon-lg" style="border:0">
+                                                    <h2 style="color:#FFA500"><b>{{item.orders.value}}</b></h2>
+                                                    <h6>/{{item.orders.of_total}}</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {%endfor%}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div> <!-- row -->
+
+                    
+
                 </div> <!-- inner -->
                 <div class="app-wrapper-footer">
                     <div class="app-footer">

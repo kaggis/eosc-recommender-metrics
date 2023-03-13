@@ -2,19 +2,17 @@
 import os
 from typing import List
 
-import pandas as pd
-
 
 class User_Action:
     def __init__(self, source_page_id, target_page_id, order):
-        self.source.page_id=source_page_id
-        self.target.page_id=target_page_id
-        self.action.order=order
+        self.source.page_id = source_page_id
+        self.target.page_id = target_page_id
+        self.action.order = order
 
 
-#from definitions import ROOT_DIR
-#from recommender.models import UserAction
-ROOT_DIR='./'
+# from definitions import ROOT_DIR
+# from recommender.models import UserAction
+ROOT_DIR = "./"
 
 TRANSITION_REWARDS_CSV_PATH = os.path.join(
     ROOT_DIR, "resources", "transition_rewards.csv"
@@ -22,7 +20,8 @@ TRANSITION_REWARDS_CSV_PATH = os.path.join(
 
 
 def _to_abstract_page_id(page_id: str, valid_page_ids: List[str]) -> str:
-    """Transforms marketplace page_id to abstract page_id used in transitions graph"""
+    """Transforms marketplace page_id to abstract page_id used in transitions
+    graph"""
     split = page_id.split("/")
 
     if (
@@ -68,7 +67,8 @@ def ua_to_reward_id(transition_rewards_df, user_action) -> str:
     if user_action.action.order:
         target = "order"
     else:
-        target = _to_abstract_page_id(user_action.target.page_id, valid_page_ids)
+        target = _to_abstract_page_id(user_action.target.page_id,
+                                      valid_page_ids)
 
     symbolic_reward = transition_rewards_df.loc[source, target]
     return symbolic_reward

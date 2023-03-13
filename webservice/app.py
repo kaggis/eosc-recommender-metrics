@@ -1,65 +1,100 @@
 from flask import Flask, render_template, jsonify, abort, request, redirect
-from flask_pymongo import PyMongo
-import json
+from flask_pymongo import PyMongo, pymongo
+import xmlrpc.client
 import os
 import re
 from dotenv import load_dotenv
 import yaml
 
 
-app = Flask('RS_EVALUATION')
-dotenv_path = os.path.join(app.instance_path, '.env')
+app = Flask("RSEVAL")
+
+dotenv_path = os.path.join(app.instance_path, ".env")
 load_dotenv(dotenv_path)
 
-app.config['RS_EVALUATION_METRIC_DESC_DIR'] = os.environ.get(
-    'RS_EVALUATION_METRIC_DESC_DIR')
-app.config["MONGO_URI"] = os.environ.get('RS_EVALUATION_MONGO_URI')
+app.config['JSON_SORT_KEYS'] = False
+app.config["RSEVAL_METRIC_DESC_DIR"] = os.environ.get(
+    "RSEVAL_METRIC_DESC_DIR"
+)
+app.config["RSEVAL_STREAM_USER_ACTIONS_JOBNAME"] = os.environ.get(
+    "RSEVAL_STREAM_USER_ACTIONS_JOBNAME"
+)
+app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"] = os.environ.get(
+    "RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"
+)
+
+app.config["MONGO_URI"] = os.environ.get("RSEVAL_MONGO_URI")
 mongo = PyMongo(app)
 
 
 def load_sidebar_info():
-    '''Reads the available metric description yaml files in metric description folder path
-    and creates dynamically a list of full names -> short names of metric descriptions
+    """Reads the available metric description yaml files in metric description
+    folder path and creates dynamically a list of full names -> short names of
+    metric descriptions
     in order to create automatically the appropriate links in sidebar
-    '''
-    folder = app.config['RS_EVALUATION_METRIC_DESC_DIR']
+    """
+    folder = app.config["RSEVAL_METRIC_DESC_DIR"]
     desc = {}
     app.logger.info(
-        'Opening metric description folder %s to gather sidebar info...', folder)
+        "Opening metric description folder %s to gather sidebar info...",
+        folder
+    )
     try:
         for filename in os.listdir(folder):
             if filename.endswith(".yml"):
-                with open(os.path.join(folder, filename), 'r') as f:
-                    app.logger.info(
-                        'Opening metric description file %s', filename)
+                with open(os.path.join(folder, filename), "r") as f:
+                    app.logger.info("Opening metric description file %s",
+                                    filename)
                     result = yaml.safe_load(f)
                     # Remove .yml suffix from filename
-                    name = re.sub('\.yml$', '', filename)
-                    desc[name] = {'fullname': result['name'],
-                                  'style': result['style']}
-    except:
-        app.logger.error('Could not load sidebar info from metric description folder:%s',
-                         app.config['RS_EVALUATION_METRIC_DESC'])
-    return {'metric_descriptions': desc}
+                    name = re.sub(r"\.yml$", "", filename)
+                    desc[name] = {"fullname": result["name"],
+                                  "style": result["style"]}
+    except Exception as e:
+        app.logger.error(
+            "Could not load sidebar info from metric description folder:%s",
+            app.config["RSEVAL_METRIC_DESC_DIR"],
+            e,
+        )
+    return {"metric_descriptions": desc}
 
 
 app.sidebar_info = load_sidebar_info()
 
 
 def respond_report_404(provider_name):
-    return jsonify("Results for report: {} not found!".format(provider_name)), 404
+    return jsonify("Results for report: {} not found!"
+                   .format(provider_name)), 404
 
 
 def respond_metric_404(metric_name):
-    return jsonify({'code': 404, 'error': 'metric with name: {} does not exist!'.format(metric_name)}), 404
+    return (
+        jsonify(
+            {
+                "code": 404,
+                "error": "metric with name: {} does not exist!"
+                .format(metric_name),
+            }
+        ),
+        404,
+    )
 
 
 def respond_stat_404(stat_name):
-    return jsonify({'code': 404, 'error': 'statistic with name: {} does not exist!'.format(stat_name)}), 404
+    return (
+        jsonify(
+            {
+                "code": 404,
+                "error": "statistic with name: {} does not exist!"
+                .format(stat_name),
+            }
+        ),
+        404,
+    )
 
 
 def db_get_provider_names():
-    '''Get a list of the names of the providers handled in the system'''
+    """Get a list of the names of the providers handled in the system"""
     result = mongo.db.metrics.find({}, {"_id": 0, "provider": 1})
     providers = []
     for item in result:
@@ -68,175 +103,292 @@ def db_get_provider_names():
 
 
 def db_get_metrics(provider_name):
-    '''Get evaluated metric results from mongodb'''
-    return mongo.db.metrics.find_one({'provider': provider_name}, {"_id": 0})
+    """Get evaluated metric results from mongodb"""
+    return mongo.db.metrics.find_one({"provider": provider_name}, {"_id": 0})
 
 
 @app.route("/", strict_slashes=False)
 def html_index():
-    '''Serve the main page that constructs the report view'''
-    return render_template('./index.html')
+    """Serve the main page that constructs the report view"""
+    return render_template("./index.html")
 
 
 @app.route("/ui", strict_slashes=False)
 def html_default_report():
-    '''Select the first available provider and serve it's report as default'''
+    """Select the first available provider and serve it's report as default"""
     default = db_get_provider_names()[0]
     return redirect("/ui/reports/{}".format(default), code=302)
 
+
 @app.route("/ui/reports/<string:provider_name>", strict_slashes=False)
 def html_metrics(provider_name):
-    '''Serve the main metrics dashboard'''
+    """Serve the main metrics dashboard"""
     reports = db_get_provider_names()
-    if not provider_name in reports:
+    if provider_name not in reports:
         abort(404)
-    
+
     result = {}
-    stats_needed = ['users', 'recommended_items', 'services', 'user_actions',
-                    'user_actions_registered', 'user_actions_registered_perc',
-                    'user_actions_anonymous', 'user_actions_anonymous_perc',
-                    'user_actions_order', 'user_actions_order_registered', 'user_actions_order_registered_perc',
-                    'user_actions_order_anonymous', 'user_actions_order_anonymous_perc', 'start', 'end']
+    stats_needed = [
+        "users",
+        "recommended_items",
+        "services",
+        "user_actions",
+        "user_actions_registered",
+        "user_actions_registered_perc",
+        "user_actions_anonymous",
+        "user_actions_anonymous_perc",
+        "user_actions_order",
+        "user_actions_order_registered",
+        "user_actions_order_registered_perc",
+        "user_actions_order_anonymous",
+        "user_actions_order_anonymous_perc",
+        "start",
+        "end",
+    ]
     for stat_name in stats_needed:
         print(stat_name)
         result[stat_name] = get_statistic(provider_name, stat_name).get_json()
 
-    metrics_needed = ['user_coverage', 'catalog_coverage',
-                      'diversity', 'diversity_gini', 'novelty', 'accuracy']
+    metrics_needed = [
+        "user_coverage",
+        "catalog_coverage",
+        "diversity",
+        "diversity_gini",
+        "novelty",
+        "accuracy",
+    ]
 
     for metric_name in metrics_needed:
         result[metric_name] = get_metric(provider_name, metric_name).get_json()
 
-    result['timestamp'] = get_api_index(provider_name).get_json()['timestamp']
-    result['report'] = provider_name
-    result['reports'] = reports
-    result['sidebar_info'] = app.sidebar_info
-    result['metric_active'] = None
-    return render_template('./rsmetrics.html', data=result)
+    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
+    result["report"] = provider_name
+    result["reports"] = reports
+    result["sidebar_info"] = app.sidebar_info
+    result["metric_active"] = None
+    return render_template("./rsmetrics.html", data=result)
 
 
 @app.route("/ui/reports/<string:provider_name>/kpis", strict_slashes=False)
 def html_kpis(provider_name):
-    '''Serve html page about kpis per provider'''
-    # call directly the get_metrics flask method implemented in our api to get json about all metrics
+    """Serve html page about kpis per provider"""
+    # call directly the get_metrics flask method implemented
+    # in our api to get json about all metrics
     reports = db_get_provider_names()
-    if not provider_name in reports:
+    if provider_name not in reports:
         abort(404)
 
     result = {}
 
-    stats_needed = ['start', 'end']
+    stats_needed = ["start", "end"]
     for stat_name in stats_needed:
         result[stat_name] = get_statistic(provider_name, stat_name).get_json()
 
-    metrics_needed = ['hit_rate', 'click_through_rate',
-                      'top5_services_ordered', 'top5_services_recommended']
+    metrics_needed = [
+        "hit_rate",
+        "click_through_rate",
+        "top5_services_ordered",
+        "top5_services_recommended",
+        "top5_categories_ordered",
+        "top5_categories_recommended",
+        "top5_scientific_domains_ordered",
+        "top5_scientific_domains_recommended",
+    ]
     for metric_name in metrics_needed:
         result[metric_name] = get_metric(provider_name, metric_name).get_json()
 
-    result['timestamp'] = get_api_index(provider_name).get_json()['timestamp']
-    result['sidebar_info'] = app.sidebar_info
-    result['report'] = provider_name
-    result['reports'] = reports
-    result['metric_active'] = None
+    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
+    result["sidebar_info"] = app.sidebar_info
+    result["report"] = provider_name
+    result["reports"] = reports
+    result["metric_active"] = None
 
-    return render_template('./kpis.html', data=result)
+    return render_template("./kpis.html", data=result)
+
 
 @app.route("/ui/reports/<string:provider_name>/graphs", strict_slashes=False)
 def html_graphs(provider_name):
-    '''Serve html page about graphs per provider'''
+    """Serve html page about graphs per provider"""
     reports = db_get_provider_names()
-    if not provider_name in reports:
+    if provider_name not in reports:
         abort(404)
 
     result = {}
 
-    stats_needed = ['start', 'end']
+    stats_needed = ["start", "end"]
     for stat_name in stats_needed:
         result[stat_name] = get_statistic(provider_name, stat_name).get_json()
 
-    result['timestamp'] = get_api_index(provider_name).get_json()['timestamp']
-    result['sidebar_info'] = app.sidebar_info
-    result['report'] = provider_name
-    result['reports'] = reports
-    result['metric_active'] = None
+    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
+    result["sidebar_info"] = app.sidebar_info
+    result["report"] = provider_name
+    result["reports"] = reports
+    result["metric_active"] = None
 
-    return render_template('./graphs.html', data=result)
+    return render_template("./graphs.html", data=result)
 
 
-@app.route("/ui/descriptions/metrics/<string:metric_name>", strict_slashes=False)
+@app.route("/ui/descriptions/metrics/<string:metric_name>",
+           strict_slashes=False)
 def html_metric_description(metric_name):
-    '''Serve html page about description of a specific metric'''
+    """Serve html page about description of a specific metric"""
     reports = db_get_provider_names()
     result = {}
 
     # compose path to open correct yaml file
-    dir = app.config['RS_EVALUATION_METRIC_DESC_DIR']
+    dir = app.config["RSEVAL_METRIC_DESC_DIR"]
     filename = metric_name + ".yml"
     try:
-        with open(os.path.join(dir, filename), 'r') as f:
+        with open(os.path.join(dir, filename), "r") as f:
             result = yaml.safe_load(f)
-            result['sidebar_info'] = app.sidebar_info
-            result['metric_active'] = metric_name
-    except:
+            result["sidebar_info"] = app.sidebar_info
+            result["metric_active"] = metric_name
+    except Exception as e:
+        app.logger.error(
+            "Could not load sidebar info from metric description folder:%s",
+            app.config["RSEVALMETRIC_DESC_DIR"],
+            e,
+        )
         abort(404)
     # ref to know from which report metrics/kpis page were transitioned to here
-    result['ref']= request.args.get('ref')
-    result['reports'] = reports
-    return render_template('./metric_desc.html', data=result)
+    result["ref"] = request.args.get("ref")
+    result["reports"] = reports
+    return render_template("./metric_desc.html", data=result)
 
 
 @app.route("/api/reports/<string:provider_name>")
 def get_api_index(provider_name):
-    '''Serve metrics and statistics as default api response'''
+    """Serve metrics and statistics as default api response"""
     result = db_get_metrics(provider_name)
     return jsonify(result)
 
 
 @app.route("/api/reports")
 def get_reports():
-    '''Get provider names'''
+    """Get provider names"""
     return jsonify(db_get_provider_names())
 
 
 @app.route("/api/reports/<string:provider_name>/metrics")
 def get_metrics(provider_name):
-    '''Serve the metrics data in json format'''
+    """Serve the metrics data in json format"""
     result = db_get_metrics(provider_name)
     if not result:
         return respond_report_404(provider_name)
-    return jsonify(result['metrics'])
+    return jsonify(result["metrics"])
 
 
 @app.route("/api/reports/<string:provider_name>/metrics/<string:metric_name>")
 def get_metric(provider_name, metric_name):
-    '''Serve specific metric data in json format'''
+    """Serve specific metric data in json format"""
     result = db_get_metrics(provider_name)
     if not result:
         return respond_report_404(provider_name)
-    for metric in result['metrics']:
-        if metric['name'] == metric_name:
+    for metric in result["metrics"]:
+        if metric["name"] == metric_name:
             return jsonify(metric)
     return respond_metric_404(metric_name)
 
 
 @app.route("/api/reports/<string:provider_name>/statistics")
 def get_statistics(provider_name):
-    '''Serve the statistics data in json format'''
+    """Serve the statistics data in json format"""
     result = db_get_metrics(provider_name)
     if not result:
         return respond_report_404(provider_name)
-    return jsonify(result['statistics'])
+    return jsonify(result["statistics"])
 
 
 @app.route("/api/reports/<string:provider_name>/statistics/<string:stat_name>")
 def get_statistic(provider_name, stat_name):
-    '''Serve specific statistic data in json format'''
+    """Serve specific statistic data in json format"""
     result = db_get_metrics(provider_name)
     if not result:
         return respond_report_404(provider_name)
-    for stat in result['statistics']:
-        if stat['name'] == stat_name:
+    for stat in result["statistics"]:
+        if stat["name"] == stat_name:
             return jsonify(stat)
     return respond_stat_404(stat_name)
 
+
+@app.route("/diag", strict_slashes=False)
+def diag():
+    """Health check"""
+
+    def print_status(value):
+        if value == 1:
+            return "UP"
+        elif value == 0:
+            return "DOWN"
+        return "UNKNOWN"
+
+    # begin with statused deemed as DOWN and then check if they are UP and
+    # update. Api statusis deemed up since executing this call means API is
+    # indeed working
+
+    general_status = 0
+    api_status = 1
+    mongo_status = 0
+    stream_status = 0
+    stream_ua = 0
+    stream_mpdb = 0
+
+    # check mongo connectivity with a sensible timeout of 3sec
+    mongo_check = PyMongo(
+        app, uri=app.config["MONGO_URI"], serverSelectionTimeoutMS=3000
+    )
+    try:
+        mongo_check.cx.admin.command("ping")
+        mongo_status = 1
+    except pymongo.errors.ServerSelectionTimeoutError:
+        app.logger.error("Error trying to check mongodb connectivity")
+
+    # check supervisor connectivity
+    try:
+        rpc_srv = xmlrpc.client.ServerProxy('http://localhost:9001/RPC2')
+
+        # if connected get supervisor status
+        supervisor = rpc_srv.supervisor.getState()
+        if supervisor["statecode"]:
+            job_ua_info = rpc_srv.supervisor.getProcessInfo(
+                app.config["RSEVAL_STREAM_USER_ACTIONS_JOBNAME"]
+            )
+            if job_ua_info["statename"] == "RUNNING":
+                stream_ua = 1
+
+            job_mpdb_info = rpc_srv.supervisor.getProcessInfo(
+                app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"]
+            )
+            if job_mpdb_info["statename"] == "RUNNING":
+                stream_mpdb = 1
+
+    except (ConnectionRefusedError, xmlrpc.client.Fault):
+        app.logger.error(
+            "Error trying to check supervisord connectivity and job statuses"
+        )
+
+    # aggregate results
+    stream_status = stream_ua * stream_mpdb
+    # streaming being unavailable doesn't affect the RSEVAL ui/api to display
+    # results. we should use another metric to affect general status if
+    # streaming is absent for quite a while and the data is stale
+    general_status = api_status * mongo_status
+
+    result = {
+        "RS_metrics": {
+            "status": print_status(general_status),
+            "RS_metrics_api": {"status": print_status(api_status)},
+            "RS_metrics_datastore": {"status": print_status(mongo_status)},
+            "RS_streaming": {
+                "status": print_status(stream_status),
+                "RS_streaming_user_actions": {
+                    "status": print_status(stream_ua)
+                },
+                "RS_streaming_mp_events": {
+                    "status": print_status(stream_mpdb)
+                }
+            },
+        }
+    }
+
+    return jsonify(result)
