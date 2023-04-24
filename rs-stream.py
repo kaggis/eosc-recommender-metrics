@@ -11,6 +11,11 @@ import pymongo
 import dateutil.parser
 from datetime import datetime
 
+# mapping recommendations
+rec_map = {'publications': 'publication', 'datasets': 'dataset',
+           'software': 'software', 'services': 'service',
+           'trainings': 'training', 'other_research_product': 'other'}
+
 # Streaming connector using stomp protocol to ingest data from rs databus
 
 # establish basic logging
@@ -224,6 +229,45 @@ def main(args):
             else:
                 rsmetrics_db['other_events_streaming'].insert_one(message)
 
+    # Create a listener class to react on each message received from the queue
+    class RecommendationsListener(stomp.ConnectionListener):
+        def __init__(self, conn):
+            self.conn = conn
+
+        # In case of error log it along with the message
+        def on_error(self, frame):
+            logging.error("error occured {}".format(frame.body))
+
+        def on_disconnect(self):
+            logging.warning("disconnected ...trying to reconnect")
+            connect_subscribe(self.conn)
+
+        def on_message(self, frame):
+            # process the message
+            message = json.loads(frame.body)
+
+            user_id = -1
+            if "user_id" in message["context"]:
+                user_id = message["context"]["user_id"]
+
+            # handle data accordingly
+            if provider == "cyfronet":
+                record = {
+                    "timestamp": dateutil.parser.isoparse(
+                                 message["context"]["timestamp"]),
+                    "user_id": user_id,
+                    "resource_ids": message["recommendations"],
+                    "type": rec_map[message["panel_id"]],
+                    "ingestion": "stream",
+                    "provider": provider,
+                }
+
+            else:
+                logging.info("Currently, only recommendations from \
+                                 Cyfronet are supported")
+
+            rsmetrics_db["recommendations"].insert_one(record)
+
     # connect to the datastore
     mongo = pymongo.MongoClient(args.datastore,
                                 uuidRepresentation="pythonLegacy")
@@ -250,6 +294,8 @@ def main(args):
         msg_queue.set_listener("", UserActionsListener(msg_queue))
     elif args.data_type == "mp_db_events":
         msg_queue.set_listener('', UserEventsListener(msg_queue))
+    elif args.data_type == "recommendations":
+        msg_queue.set_listener('', RecommendationsListener(msg_queue))
     else:
         logging.error(
             "{} is not a supported ingestion data type".format(args.data_type)
