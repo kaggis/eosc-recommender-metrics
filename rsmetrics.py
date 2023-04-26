@@ -151,7 +151,7 @@ if args.endtime is not None:
 # merge dictionaries to create two seperate match queries (one for user
 # actions and one for rec)
 match_ua = {**match_query, "provider": {"$in": [args.provider]}}
-match_rs = {**match_query, "provider": args.provider}
+match_rs = {**match_query, "provider": args.provider, "type": "service"}
 
 # first column (_id) ignored, where iloc is used
 # pymongoarrow lib provides efficient and direct load of query results into
