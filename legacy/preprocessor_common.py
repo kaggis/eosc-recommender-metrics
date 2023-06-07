@@ -14,8 +14,10 @@ import os
 import reward_mapping as rm
 
 from get_service_catalog import (
-   get_services_from_search,
-   output_services_to_csv,
+    get_eosc_marketplace_url,
+    get_service_catalog_items,
+    get_service_catalog_page_content,
+    save_service_items_to_csv,
 )
 
 logging.basicConfig(
@@ -167,17 +169,19 @@ rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 # automatically associate page ids to service ids
 # default to no caching
 if not args.use_cache:
-    service_list_url = config["service"]["service_list_url"]
+    eosc_url = get_eosc_marketplace_url()
     print(
         "Retrieving page: marketplace list of services... \nGrabbing url: {0}"
-        .format(service_list_url)
+        .format(eosc_url)
     )
-    eosc_service_results = get_services_from_search(service_list_url)
+    eosc_page_content = get_service_catalog_page_content(eosc_url)
+    print("Page retrieved!\nGenerating results...")
+    eosc_service_results = get_service_catalog_items(eosc_page_content)
 
     if config["service"]["store"]:
         # output to csv
-        output_services_to_csv(eosc_service_results,
-                               config["service"]["store"])
+        save_service_items_to_csv(eosc_service_results,
+                                  config["service"]["store"])
         print("File written to {}".format(config["service"]["store"]))
 
 # if cache file is used

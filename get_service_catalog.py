@@ -1,74 +1,85 @@
 #!/usr/bin/env python3
 import requests
-from bs4 import BeautifulSoup
 import sys
 import csv
 import argparse
 
 
-def get_eosc_marketplace_url(num_of_items=1000):
-    """Constructs the EOSC Marketplace URL to grab the complete service catalog
-    (list of available services) in one request.
+def get_services_from_search(endpoint_url, batch=100):
+    """Given an eosc search service endpoint url and a batch number the
+    function tries to call iteratively the json endpoint and retrive the
+    list of services in the search service. Finally it produces a list of
+    triplets [service_id, service_name, service_path]
 
     Args:
-        num_of_items (int, optional): Number of items per page to be used as an
-        url argument when contacting EOSC Marketplace webpage to grab all
-        services in one take. Defaults to 1000.
-
-    Returns:
-        string: EOSC marketplace url along with the neccessary url parameters
-        to grab the list of all available services
-    """
-    url = (
-        "https://marketplace.eosc-portal.eu/services?page=1&per_page={}"
-        .format(str(num_of_items))
-    )
-    return url
-
-
-# Contacts eosc marketplace page to retrieve the complete list of items in a
-# single take
-def get_service_catalog_page_content(url):
-    """Returns the HTML Page content of EOSC Marketplace Service Page catalog
-
-    Args:
-        url (string): url to EOSC Marketplace Service list
-
-    Returns:
-        bytes: html content of the eosc marketplace service list page
-    """
-    page = requests.get(url)
-    return page.content
-
-
-def get_service_catalog_items(content):
-    """Parses EOSC Marketplace service list html page and extracts all active
-    services.
-    Each service is described by a list of three items:
-    [service_id, service_name, service_path]
-
-    Args:
-        content (bytes): Html content of EOSC Marketplace page containing the
-        complete list of available services
+        endpoint (string): A valid EOSC search service endpoint
+        batch (int): number of how many items to iterate. Max = 100
 
     Returns:
         list of lists: A list of service entries. Each service entry is a
         three-item list containing:
         [service_id, service_name, service_path]
     """
-    rows = []
-    soup = BeautifulSoup(content, "html.parser")
-    results = soup.findAll("h2", {"data-e2e": "service-id"})
-    for item in results:
-        a = item.findChildren("a", recursive=False)[0]
-        row = [int(item.attrs["data-service-id"]), a.text.strip(), a["href"]]
-        rows.append(row)
-    # sort rows by id
-    rows = sorted(rows, key=lambda x: x[0])
-    return rows
+
+    # cap batch at 100 items due to the search service max row limit per page
+    if batch > 100:
+        batch = 100
+
+    # here we will store all the collected services
+    services = []
+    # needed POST parameters on each request
+    payload = {
+        "facets": {
+            "title": {
+                "field": "title",
+                "type": "terms",
+                "limit": 0
+                }
+            }
+        }
+    # needed headers on each request
+    headers = {"Accept": "application/json"}
+    # keep track of next page cursor
+    cursor = ""
+    index = 0
+    while True:
+        index += 1
+        url = "{}?rows={}&collection=service&q=*&qf=title".format(
+            endpoint_url, batch
+        )
+        if cursor:
+            url = "{}&cursor={}".format(url, cursor)
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            # if request error break and return empty
+            return None
+        # else parse the details
+        data = response.json()
+
+        # if results are empty we are finished
+        if len(data.get("results")) == 0:
+            break
+
+        services.extend(
+            [
+                [
+                    int(service.get("id")),
+                    service.get("title")[0],
+                    "/services/" + service.get("slug"),
+                ]
+                for service in data.get("results")
+            ]
+        )
+        print("Retrieving up to {}...".format(index * batch))
+        cursor = data.get("nextCursorMark")
+
+    # sort by service id
+    services = sorted(services, key=lambda x: x[0])
+
+    return services
 
 
-def save_service_items_to_csv(items, output):
+def output_services_to_csv(items, output):
     with open(output, "w") as f:
         writer = csv.writer(f)
         writer.writerows(items)
@@ -76,18 +87,11 @@ def save_service_items_to_csv(items, output):
 
 # Main logic
 def main(args=None):
-    # call eosc marketplace with ample number of services per page
-    # default = 1000
-    url = get_eosc_marketplace_url(args.items)
-    print(
-        "Retrieving page: marketplace list of services... \nGrabbing url: {0}"
-        .format(url)
-    )
-    page_content = get_service_catalog_page_content(url)
-    print("Page retrieved!\nGenerating results...")
-    results = get_service_catalog_items(page_content)
+    # begin collecting services from url per batch number
+    print("Connecting to: {}...".format(args.url))
+    services = get_services_from_search(args.url, args.batch)
     # output to csv
-    save_service_items_to_csv(results, args.output)
+    output_services_to_csv(services, args.output)
     print("File written to {}".format(args.output))
 
 
@@ -97,13 +101,22 @@ if __name__ == "__main__":
         description="Retrieve service catalog from eosc marketplace"
     )
     parser.add_argument(
+        "-u",
+        "--url",
+        metavar="STRING",
+        help="service list endpoint url",
+        required=False,
+        dest="url",
+        default=100,
+    )
+    parser.add_argument(
         "-n",
         "--num-of-items",
-        metavar="STRING",
+        metavar="INTEGER",
         help="Number of items per page",
         required=False,
-        dest="items",
-        default="1000",
+        dest="batch",
+        default=100,
     )
     parser.add_argument(
         "-o",
