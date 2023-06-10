@@ -214,41 +214,7 @@ for col in ['scientific_domain', 'category']:
 
     logging.info("{} collection stored...".format(col))
 
-# B. Working on users
-
-# 1) produce users csv with each user id along with the user's accessed
-# services
-# 2) query users from database for fields _id and accessed_services then create
-# a list of rows
-# 3) each row contains two elements:
-# first: user_id in string format and
-# second: a space separated sorted list of accessed services
-users = recdb["user"].find({}, {"accessed_services": 1})
-users = list(
-    map(
-        lambda x: {
-            "id": int(str(x["_id"])),
-            "accessed_resources": sorted(set(x["accessed_services"])),
-            "created_on": None,
-            "deleted_on": None,
-            "provider": ["cyfronet", "athena"],  # currently, static
-            "ingestion": "batch",  # currently, static
-        },
-        users,
-    )
-)
-
-rsmetrics_db["users"].delete_many(
-    {
-        "provider": {"$in": ["cyfronet", "athena"]},
-        "ingestion": "batch",
-    }
-)
-rsmetrics_db["users"].insert_many(users)
-
-logging.info("Users collection stored...")
-
-# D. Working on resources
+# B. Working on resources
 
 remote_resources = {}
 for d in recdb["service"].find({}, {'_id': 1, 'categories': 1,
@@ -288,7 +254,7 @@ rsmetrics_db["resources"].insert_many(resources)
 
 logging.info("Resources collection stored...")
 
-# E. Working on user_actions
+# C. Working on user_actions
 
 
 class Mock:
@@ -350,10 +316,19 @@ resources = pd.Series(resources["Service"].values,
 luas = []
 col = "user_actions" if provider["name"] == "athena" else "user_action"
 for ua in recdb[col].find(query).sort("user"):
-    # set -1 to anonymous users
-    user = -1
+    # in legacy mode the non-existance of user_id equals to anonynoums action,
+    # which in rs metrics (legacy mode) is indicated with -1
+    user_id = -1
+    aai_uid = None
+    unique_id = None
     if "user" in ua:
-        user = ua["user"]
+        user_id = ua["user"]
+
+    if "aai_uid" in ua:
+        aai_uid = ua["aai_uid"]
+
+    if "unique_id" in ua:
+        unique_id = str(ua["unique_id"])
 
     # process data that map from page id to service id exist
     # for both source and target page ids
@@ -386,7 +361,9 @@ for ua in recdb[col].find(query).sort("user"):
 
     luas.append(
         {
-            "user_id": int(user),
+            "user_id": user_id,
+            "aai_uid": aai_uid,
+            "unique_id": unique_id,
             "source_resource_id": int(source_service_id),
             "target_resource_id": int(target_service_id),
             "reward": float(reward),

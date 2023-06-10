@@ -63,9 +63,20 @@ def main(args):
             source_path = ""
             target_resource_id = -1
             source_resource_id = -1
-            user_id = -1
+            # in current mode there should be not found user_id=-1
+            # a -1 indicates a legacy mode,
+            # since it is current user_id is set with None
+            user_id = None
+            aai_uid = None
+            unique_id = None
             if "user_id" in message:
                 user_id = message["user_id"]
+
+            if "aai_uid" in message:
+                aai_uid = message["aai_uid"]
+
+            if "unique_id" in message:
+                unique_id = str(message["unique_id"])
 
             if "source" in message:
                 if "page_id" in message["source"]:
@@ -92,6 +103,8 @@ def main(args):
             record = {
                 "timestamp": dateutil.parser.isoparse(message["timestamp"]),
                 "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
                 "panel": panel,
                 "target_path": target_path,
                 "source_path": source_path,
@@ -245,10 +258,20 @@ def main(args):
         def on_message(self, frame):
             # process the message
             message = json.loads(frame.body)
-
-            user_id = -1
+            # in current mode there should be not found user_id=-1
+            # a -1 indicates a legacy mode,
+            # since it is current user_id is set with None
+            user_id = None
+            aai_uid = None
+            unique_id = None
             if "user_id" in message["context"]:
                 user_id = message["context"]["user_id"]
+
+            if "aai_uid" in message["context"]:
+                aai_uid = message["context"]["aai_uid"]
+
+            if "unique_id" in message["context"]:
+                unique_id = str(message["context"]["unique_id"])
 
             # handle data accordingly
             if provider == "cyfronet":
@@ -256,6 +279,8 @@ def main(args):
                     "timestamp": dateutil.parser.isoparse(
                                  message["context"]["timestamp"]),
                     "user_id": user_id,
+                    "aai_uid": aai_uid,
+                    "unique_id": unique_id,
                     "resource_ids": message["recommendations"],
                     "type": rec_map[message["panel_id"]],
                     "ingestion": "stream",

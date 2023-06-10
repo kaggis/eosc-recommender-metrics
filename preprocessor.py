@@ -162,13 +162,26 @@ recs = []
 
 if provider["name"] == "cyfronet":
     for rec in recdb["recommendation"].find(query).sort("user"):
-        user = -1
+        # in legacy mode the non-existance of user_id equals to
+        # anonynoums action,
+        # which in rs metrics (legacy mode) is indicated with -1
+        user_id = -1
+        aai_uid = None
+        unique_id = None
         if "user" in rec:
-            user = rec["user"]
+            user_id = rec["user"]
+
+        if "aai_uid" in rec:
+            aai_uid = rec["aai_uid"]
+
+        if "unique_id" in rec:
+            unique_id = str(rec["unique_id"])
 
         recs.append(
             {
-                "user_id": int(user),
+                "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
                 "resource_ids": rec["services"],
                 "timestamp": rec["timestamp"],
                 "type": "service",  # currently, static
@@ -181,13 +194,26 @@ elif provider["name"] == "athena":
     _query = query.copy()
     _query["date"] = _query.pop("timestamp")
     for rec in recdb["recommendation"].find(_query).sort("user_id"):
-        # if dataset contains null references to user_ids replace them with
-        # the value -1
-        if not rec["user_id"]:
-            rec["user_id"] = -1
+        # in legacy mode the non-existance of user_id equals to
+        # anonynoums action,
+        # which in rs metrics (legacy mode) is indicated with -1
+        user_id = -1
+        aai_uid = None
+        unique_id = None
+        if "user_id" in rec:
+            user_id = rec["user_id"]
+
+        if "aai_uid" in rec:
+            aai_uid = rec["aai_uid"]
+
+        if "unique_id" in rec:
+            unique_id = str(rec["unique_id"])
+
         recs.append(
             {
-                "user_id": int(rec["user_id"]),
+                "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
                 "resource_ids": list(
                     map(lambda x: x["service_id"], rec["recommendation"])
                 ),

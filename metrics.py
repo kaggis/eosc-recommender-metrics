@@ -4,7 +4,9 @@ import numpy as np
 
 
 class Runtime:
-    def __init__(self):
+    def __init__(self, legacy=False):
+        self.schema = 'legacy' if legacy else 'current'
+        self.id_field = 'user_id' if legacy else 'aai_uid'
         self.users = None
         self.services = None
         self.user_actions = None
@@ -103,8 +105,8 @@ def recommended_items_to_registered_users(object):
     Calculate the total number of recommendations for registered users
     found in Pandas DataFrame object recommendations
     """
-    return len(object.recommendations[object.recommendations["user_id"] != -1]
-               .index)
+    return len(object.recommendations[object.recommendations[object.id_field]
+               .find_registered(object.schema)].index)
 
 
 @statistic("The total number of recommended items towards anonymous users")
@@ -163,7 +165,8 @@ def user_actions_registered(object):
     Calculate the total number of user_actions occurred by registered users
     found in Pandas DataFrame object user_actions
     """
-    return len(object.user_actions[object.user_actions["user_id"] != -1].index)
+    return len(object.user_actions[object.user_actions[object.id_field]
+               .find_registered(object.schema)].index)
 
 
 @statistic("The total number of user actions occurred by anonymous users")
@@ -220,7 +223,8 @@ def user_actions_order_registered(object):
     return len(
         object.user_actions[
             (object.user_actions["reward"] == 1.0) &
-            (object.user_actions["user_id"] != -1)
+            (object.user_actions[object.id_field]
+                .find_registered(object.schema))
         ].index
     )
 
@@ -315,7 +319,7 @@ def total_unique_users_recommended(object):
     """
     Calculate the total number of unique users found in recommendations
     """
-    return int(object.recommendations.nunique()["user_id"])
+    return int(object.recommendations.nunique()[object.id_field])
 
 
 @metric("The percentage (%) of unique users to the total number of users")
@@ -415,10 +419,13 @@ def click_through_rate(object):
     user_actions_recpanel_clicks = user_actions_recpanel_views[
         user_actions_recpanel_views['panel'] == 'recommendation_panel'
     ]
-
-    return round(
-        len(user_actions_recpanel_clicks) / len(user_actions_recpanel_views), 2
-    )
+    try:
+        return round(
+            len(user_actions_recpanel_clicks)
+            / len(user_actions_recpanel_views), 2
+        )
+    except ZeroDivisionError:
+        return 0.00
 
 
 @metric(
@@ -438,7 +445,8 @@ def diversity(object, anonymous=False):
         recs = object.recommendations
     else:
         recs = object.recommendations[
-            (object.recommendations["user_id"] != -1)
+            (object.recommendations[object.id_field]
+                .find_registered(object.schema))
         ]
 
     # this variable keeps the sum of user_norm (where user_norm is
@@ -458,7 +466,7 @@ def diversity(object, anonymous=False):
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["user_id"].to_dict()
+    d_service = gr_service[object.id_field].to_dict()
 
     # each element represent the service's recommendations occurance
     # e.g. [1,6,7]
@@ -489,8 +497,9 @@ def novelty(object):
     services_pub = object.services["id"]
     # recommended services to authenticated users
     services_rec = (object
-                    .recommendations[object.recommendations["user_id"] != -1]
-                    ["resource_id"])
+                    .recommendations[object.recommendations[object.id_field]
+                                     .find_registered(
+                                     object.schema)]["resource_id"])
 
     # services that are published and recommended
     services_recpub = services_rec[services_rec
@@ -503,7 +512,7 @@ def novelty(object):
     ua_serv_view = ua[
         (ua["source_resource_id"] != ua["target_resource_id"])
         & (ua["target_resource_id"] != -1)
-        & (ua["user_id"] != -1)
+        & (ua[object.id_field].find_registered(object.schema))
     ]
 
     # count service views by service id (sorted by service id)
@@ -550,9 +559,9 @@ def diversity_gini(object, anonymous=False):
         recs = object.recommendations
     else:
         recs = object.recommendations[
-            (object.recommendations["user_id"] != -1)
+            (object.recommendations[object.id_field]
+                .find_registered(object.schema))
         ]
-
     # this variable keeps the sum of user_norm (where user_norm is
     # the count of how many times a User has been suggested)
     # however since no cutoff at per user recommendations is applied and
@@ -568,7 +577,7 @@ def diversity_gini(object, anonymous=False):
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["user_id"].to_dict()
+    d_service = gr_service[object.id_field].to_dict()
 
     # total number of recommended services
     n_recommended_items = len(d_service)
@@ -616,7 +625,8 @@ def top5_services_recommended(
         recs = object.recommendations
     else:
         recs = object.recommendations[
-            (object.recommendations["user_id"] != -1)
+            (object.recommendations[object.id_field]
+                .find_registered(object.schema))
         ]
 
     # item_count
@@ -627,7 +637,7 @@ def top5_services_recommended(
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["user_id"].to_dict()
+    d_service = gr_service[object.id_field].to_dict()
 
     # convert dictionary to double list (list of lists)
     # where the sublist is <service_id> <item_count>
@@ -696,7 +706,8 @@ def top5_services_ordered(
         uas = object.user_actions[
             (object.user_actions["reward"] == 1.0)
             & (object.user_actions["target_resource_id"] != -1)
-            & (object.user_actions["user_id"] != -1)
+            & (object.user_actions[object.id_field]
+                .find_registered(object.schema))
         ]
     else:
         uas = object.user_actions[
@@ -712,7 +723,7 @@ def top5_services_ordered(
     # create a dictionary of item_count in order to
     # map the service id to the respective item_count
     # key=<service id> and value=<item_count>
-    d_service = gr_service["user_id"].to_dict()
+    d_service = gr_service[object.id_field].to_dict()
 
     # convert dictionary to double list (list of lists)
     # where the sublist is <service_id> <item_count>
@@ -774,7 +785,8 @@ def top5_categories_recommended(object, k=5, anonymous=False):
         recs = object.recommendations
     else:
         recs = object.recommendations[
-            (object.recommendations["user_id"] != -1)
+            (object.recommendations[object.id_field]
+                .find_registered(object.schema))
         ]
 
     # rename the column at a copy (not in place) for more readable processing
@@ -795,11 +807,11 @@ def top5_categories_recommended(object, k=5, anonymous=False):
     # count categories' ids and covert pandas series to dataframe
     # user_id holds the same values with all other columns
     # it is just the first column
-    cat = exp.groupby(["category"])['user_id'].count().to_frame()
+    cat = exp.groupby(["category"])[object.id_field].count().to_frame()
 
     # reset indexes and rename columns accordingly
     cat = cat.reset_index().rename(columns={'category': 'id',
-                                            'user_id': 'count'})
+                                            object.id_field: 'count'})
 
     # create a second inner join with the categories
     # in order to retrieve the name of the categories
@@ -864,7 +876,8 @@ def top5_categories_ordered(object, k=5, anonymous=False):
         uas = object.user_actions[
             (object.user_actions["reward"] == 1.0)
             & (object.user_actions["target_resource_id"] != -1)
-            & (object.user_actions["user_id"] != -1)
+            & (object.user_actions[object.id_field]
+                .find_registered(object.schema))
         ]
     else:
         uas = object.user_actions[
@@ -890,11 +903,11 @@ def top5_categories_ordered(object, k=5, anonymous=False):
     # count categories' ids and covert pandas series to dataframe
     # user_id holds the same values with all other columns
     # it is just the first column
-    cat = exp.groupby(["category"])['user_id'].count().to_frame()
+    cat = exp.groupby(["category"])[object.id_field].count().to_frame()
 
     # reset indexes and rename columns accordingly
     cat = cat.reset_index().rename(columns={'category': 'id',
-                                            'user_id': 'count'})
+                                            object.id_field: 'count'})
 
     # create a second inner join with the categories
     # in order to retrieve the name of the categories
@@ -958,7 +971,8 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
         recs = object.recommendations
     else:
         recs = object.recommendations[
-            (object.recommendations["user_id"] != -1)
+            (object.recommendations[object.id_field]
+                .find_registered(object.schema))
         ]
 
     # rename the column at a copy (not in place) for more readable processing
@@ -979,11 +993,12 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     # count scientific domains' ids and covert pandas series to dataframe
     # user_id holds the same values with all other columns
     # it is just the first column
-    cat = exp.groupby(["scientific_domain"])['user_id'].count().to_frame()
+    cat = exp.groupby(["scientific_domain"])[
+        object.id_field].count().to_frame()
 
     # reset indexes and rename columns accordingly
     cat = cat.reset_index().rename(columns={'scientific_domain': 'id',
-                                            'user_id': 'count'})
+                                            object.id_field: 'count'})
 
     # create a second inner join with the scientific domains
     # in order to retrieve the name of the scientific domains
@@ -1050,7 +1065,8 @@ def top5_scientific_domains_ordered(object, k=5, anonymous=False):
         uas = object.user_actions[
             (object.user_actions["reward"] == 1.0)
             & (object.user_actions["target_resource_id"] != -1)
-            & (object.user_actions["user_id"] != -1)
+            & (object.user_actions[object.id_field].find_registered(
+                  object.schema))
         ]
     else:
         uas = object.user_actions[
@@ -1076,11 +1092,12 @@ def top5_scientific_domains_ordered(object, k=5, anonymous=False):
     # count scientific domains' ids and covert pandas series to dataframe
     # user_id holds the same values with all other columns
     # it is just the first column
-    cat = exp.groupby(["scientific_domain"])['user_id'].count().to_frame()
+    cat = exp.groupby(["scientific_domain"])[
+        object.id_field].count().to_frame()
 
     # reset indexes and rename columns accordingly
     cat = cat.reset_index().rename(columns={'scientific_domain': 'id',
-                                            'user_id': 'count'})
+                                            object.id_field: 'count'})
 
     # create a second inner join with the scientific domains
     # in order to retrieve the name of the scientific domains
@@ -1419,15 +1436,15 @@ def accuracy(object):
 
     # a matrix of User ids and the respective recommended services' ids
     rec_df = (
-        object.recommendations[["user_id", "resource_id"]]
-        .groupby(["user_id"])
+        object.recommendations[[object.id_field, "resource_id"]]
+        .groupby([object.id_field])
         .agg({"resource_id": lambda x: x.unique().tolist()})
         .reset_index()
     )
 
     # performs a left join on User id, which means that nan values
     # are set for cases where no recommendations were made
-    data = pd.merge(access_df, rec_df, left_on="id", right_on="user_id",
+    data = pd.merge(access_df, rec_df, left_on="id", right_on=object.id_field,
                     how="left")
     # convert nan values to zeros, in order to be handled easily
     # by the inner function
