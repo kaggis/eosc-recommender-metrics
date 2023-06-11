@@ -10,11 +10,51 @@ import ssl
 import pymongo
 import dateutil.parser
 from datetime import datetime
+import re
+import os
+import pandas as pd
+import reward_mapping as rm
 
 # mapping recommendations
 rec_map = {'publications': 'publication', 'datasets': 'dataset',
            'software': 'software', 'services': 'service',
            'trainings': 'training', 'other_research_product': 'other'}
+
+
+class Mock:
+    pass
+
+
+class User_Action:
+    def __init__(self, source_page_id, target_page_id, order):
+        self.source = Mock()
+        self.target = Mock()
+        self.action = Mock()
+        self.source.page_id = source_page_id
+        self.target.page_id = target_page_id
+        self.action.order = order
+
+
+reward_mapping = {
+    "order": 1.0,
+    "interest": 0.7,
+    "mild_interest": 0.3,
+    "simple_transition": 0.0,
+    "unknown_transition": 0.0,
+    "exit": 0.0,
+}
+
+# reward_mapping.py is modified so that the function
+# reads the Transition rewards csv file once
+# consequently, one argument has been added to the
+# called function
+ROOT_DIR = "./"
+
+TRANSITION_REWARDS_CSV_PATH = os.path.join(
+    ROOT_DIR, "resources", "transition_rewards.csv"
+)
+transition_rewards_df = pd.read_csv(TRANSITION_REWARDS_CSV_PATH,
+                                    index_col="source")
 
 # Streaming connector using stomp protocol to ingest data from rs databus
 
@@ -40,6 +80,7 @@ def main(args):
     # init resource_lookup dictionary where we store service paths to
     # corresponding ids
     resource_lookup = {}
+    reverse_resource_lookup = {}
 
     # Create a listener class to react on each message received from the queue
     class UserActionsListener(stomp.ConnectionListener):
@@ -90,6 +131,18 @@ def main(args):
                 if "page_id" in message["target"]:
                     target_path = message["target"]["page_id"]
 
+            # check if action comes from the search page
+            # then correct the target_path which includes the EOSC Marketplace
+            # website with the actual service's landing page based on the
+            # resource_lookup (the reversed version)
+            pattern = r"search%2F(?:all|dataset|software|service" + \
+                      "|data-source|training|guideline|other)"
+            if re.findall(pattern, source_path):
+                if message["source"]["root"]["resource_type"] == 'service':
+                    source_path = "/services"
+                    _id = int(message["source"]["root"]["resource_id"])
+                    target_path = reverse_resource_lookup[_id]
+
             # if path exist in resource lookup dictionary,
             # identify the resource id
             if target_path in resource_lookup:
@@ -99,6 +152,19 @@ def main(args):
             # identify the resource id
             if source_path in resource_lookup:
                 source_resource_id = resource_lookup[source_path]
+
+            # function has been modified where one more argument is given
+            # in order to avoid time-consuming processing of reading csv file
+            # for every func call
+            symbolic_reward = rm.ua_to_reward_id(
+                transition_rewards_df,
+                User_Action(
+                    source_path.rstrip('/'),
+                    target_path.rstrip('/'),
+                    message["action"]["order"]),
+                )
+
+            reward = reward_mapping[symbolic_reward]
 
             record = {
                 "timestamp": dateutil.parser.isoparse(message["timestamp"]),
@@ -110,7 +176,7 @@ def main(args):
                 "source_path": source_path,
                 "target_resource_id": target_resource_id,
                 "source_resource_id": source_resource_id,
-                "reward": 0.0,
+                "reward": float(reward),
                 "type": "service",
                 "ingestion": "stream",
                 "provider": provider,
@@ -309,6 +375,7 @@ def main(args):
         # if the service item has indeed an updated path (url) grab it
         if "path" in item:
             resource_lookup[item["path"]] = item["id"]
+            reverse_resource_lookup[item["id"]] = item["path"]
 
     # create the connection to the queue
     msg_queue = stomp.Connection([(host, port)], heartbeats=(10000, 5000))

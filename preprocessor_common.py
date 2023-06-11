@@ -9,6 +9,7 @@ from natsort import natsorted
 import logging
 import pandas as pd
 import os
+import re
 
 # local lib
 import reward_mapping as rm
@@ -313,6 +314,8 @@ resources.columns = [
 resources = pd.Series(resources["Service"].values,
                       index=resources["Page"]).to_dict()
 
+reverse_resources = {v: k for k, v in resources.items()}
+
 luas = []
 col = "user_actions" if provider["name"] == "athena" else "user_action"
 for ua in recdb[col].find(query).sort("user"):
@@ -334,14 +337,28 @@ for ua in recdb[col].find(query).sort("user"):
     # for both source and target page ids
     # if not set service id to -1
     try:
-        _pageid = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
-        source_service_id = resources[_pageid]
+        source_path = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
+        source_service_id = resources[source_path]
+
     except (KeyError, IndexError):
         source_service_id = -1
 
     try:
-        _pageid = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
-        target_service_id = resources[_pageid]
+        target_path = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
+
+        # this involves the current schema and not the legacy
+        # check if action comes from the search page
+        # then correct the target_path which includes the EOSC Marketplace
+        # website with the actual service's landing page based on the
+        # resource_lookup (the reversed version)
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  "|data-source|training|guideline|other)"
+        if re.findall(pattern, ua["source"]["page_id"]):
+            source_path = "/services"
+            target_path = reverse_resources[
+                int(ua["source"]["root"]["resource_id"])]
+
+        target_service_id = resources[target_path]
     except KeyError:
         target_service_id = -1
 
@@ -351,8 +368,8 @@ for ua in recdb[col].find(query).sort("user"):
     symbolic_reward = rm.ua_to_reward_id(
         transition_rewards_df,
         User_Action(
-            ua["source"]["page_id"],
-            ua["target"]["page_id"],
+            ua["source"]["page_id"].rstrip('/'),
+            ua["target"]["page_id"].rstrip('/'),
             ua["action"]["order"]
         ),
     )
@@ -369,8 +386,8 @@ for ua in recdb[col].find(query).sort("user"):
             "reward": float(reward),
             "panel": ua["source"]["root"]["type"],
             "timestamp": ua["timestamp"],
-            "source_path": ua["source"]["page_id"],
-            "target_path": ua["target"]["page_id"],
+            "source_path": source_path,
+            "target_path": target_path,
             "type": "service",  # currently, static
             "provider": ["cyfronet", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static
