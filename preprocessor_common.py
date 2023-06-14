@@ -9,6 +9,7 @@ from natsort import natsorted
 import logging
 import pandas as pd
 import os
+import re
 
 # local lib
 import reward_mapping as rm
@@ -214,41 +215,7 @@ for col in ['scientific_domain', 'category']:
 
     logging.info("{} collection stored...".format(col))
 
-# B. Working on users
-
-# 1) produce users csv with each user id along with the user's accessed
-# services
-# 2) query users from database for fields _id and accessed_services then create
-# a list of rows
-# 3) each row contains two elements:
-# first: user_id in string format and
-# second: a space separated sorted list of accessed services
-users = recdb["user"].find({}, {"accessed_services": 1})
-users = list(
-    map(
-        lambda x: {
-            "id": int(str(x["_id"])),
-            "accessed_resources": sorted(set(x["accessed_services"])),
-            "created_on": None,
-            "deleted_on": None,
-            "provider": ["cyfronet", "athena"],  # currently, static
-            "ingestion": "batch",  # currently, static
-        },
-        users,
-    )
-)
-
-rsmetrics_db["users"].delete_many(
-    {
-        "provider": {"$in": ["cyfronet", "athena"]},
-        "ingestion": "batch",
-    }
-)
-rsmetrics_db["users"].insert_many(users)
-
-logging.info("Users collection stored...")
-
-# D. Working on resources
+# B. Working on resources
 
 remote_resources = {}
 for d in recdb["service"].find({}, {'_id': 1, 'categories': 1,
@@ -288,7 +255,7 @@ rsmetrics_db["resources"].insert_many(resources)
 
 logging.info("Resources collection stored...")
 
-# E. Working on user_actions
+# C. Working on user_actions
 
 
 class Mock:
@@ -347,26 +314,51 @@ resources.columns = [
 resources = pd.Series(resources["Service"].values,
                       index=resources["Page"]).to_dict()
 
+reverse_resources = {v: k for k, v in resources.items()}
+
 luas = []
 col = "user_actions" if provider["name"] == "athena" else "user_action"
 for ua in recdb[col].find(query).sort("user"):
-    # set -1 to anonymous users
-    user = -1
+    # in legacy mode the non-existance of user_id equals to anonynoums action,
+    # which in rs metrics (legacy mode) is indicated with -1
+    user_id = -1
+    aai_uid = None
+    unique_id = None
     if "user" in ua:
-        user = ua["user"]
+        user_id = ua["user"]
+
+    if "aai_uid" in ua:
+        aai_uid = ua["aai_uid"]
+
+    if "unique_id" in ua:
+        unique_id = str(ua["unique_id"])
 
     # process data that map from page id to service id exist
     # for both source and target page ids
     # if not set service id to -1
     try:
-        _pageid = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
-        source_service_id = resources[_pageid]
+        source_path = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
+        source_service_id = resources[source_path]
+
     except (KeyError, IndexError):
         source_service_id = -1
 
     try:
-        _pageid = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
-        target_service_id = resources[_pageid]
+        target_path = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
+
+        # this involves the current schema and not the legacy
+        # check if action comes from the search page
+        # then correct the target_path which includes the EOSC Marketplace
+        # website with the actual service's landing page based on the
+        # resource_lookup (the reversed version)
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  "|data-source|training|guideline|other)"
+        if re.findall(pattern, ua["source"]["page_id"]):
+            source_path = "/services"
+            target_path = reverse_resources[
+                int(ua["source"]["root"]["resource_id"])]
+
+        target_service_id = resources[target_path]
     except KeyError:
         target_service_id = -1
 
@@ -376,8 +368,8 @@ for ua in recdb[col].find(query).sort("user"):
     symbolic_reward = rm.ua_to_reward_id(
         transition_rewards_df,
         User_Action(
-            ua["source"]["page_id"],
-            ua["target"]["page_id"],
+            ua["source"]["page_id"].rstrip('/'),
+            ua["target"]["page_id"].rstrip('/'),
             ua["action"]["order"]
         ),
     )
@@ -386,14 +378,16 @@ for ua in recdb[col].find(query).sort("user"):
 
     luas.append(
         {
-            "user_id": int(user),
+            "user_id": user_id,
+            "aai_uid": aai_uid,
+            "unique_id": unique_id,
             "source_resource_id": int(source_service_id),
             "target_resource_id": int(target_service_id),
             "reward": float(reward),
             "panel": ua["source"]["root"]["type"],
             "timestamp": ua["timestamp"],
-            "source_path": ua["source"]["page_id"],
-            "target_path": ua["target"]["page_id"],
+            "source_path": source_path,
+            "target_path": target_path,
             "type": "service",  # currently, static
             "provider": ["cyfronet", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static

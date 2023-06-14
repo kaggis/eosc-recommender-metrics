@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import traceback
 import argparse
 import json
 import yaml
@@ -40,6 +41,18 @@ def print_help(func):
 
     return inner
 
+
+# based on the schema it returns a pandas Series (self)
+# with registered users only, accordingly
+def find_registered(self, schema):
+    if schema == 'current':
+        return self.notnull()
+    else:
+        return self != -1
+
+
+# function is attached to a pandas Series (self)
+pd.Series.find_registered = find_registered
 
 parser = argparse.ArgumentParser(
     prog="rsmetrics",
@@ -87,6 +100,8 @@ optional.add_argument(
     nargs="?",
     default=None,
 )
+optional.add_argument("--legacy", help=("enable in order to run calculation \
+based on legacy schema"), action="store_true")
 
 optional.add_argument(
     "-h", "--help", action="help", help="show this help message and exit"
@@ -99,7 +114,7 @@ optional.add_argument("-v", action="store_true")
 args = parser.parse_args()
 logging.disable = not args.v
 
-run = m.Runtime()
+run = m.Runtime(args.legacy)
 
 if args.starttime:
     args.starttime = datetime.fromisoformat(args.starttime)
@@ -135,9 +150,33 @@ datastore = pymongo.MongoClient(config["datastore"],
 # use db
 rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 
-# establish a matching query to select data for correct provider and
-# start/end date
+# establish a matching query to select data for correct provider
 match_query = {}
+
+# schema decision table based on which data to calculate metrics upon
+# metrics computations consider both registered and anonymous users
+# schema   | registered     | anonymous
+# current | aai_uid=!None  | aai_uid=null and user_id=null
+# legacy  | user_id=!None  | user_id == -1
+if not args.legacy:
+    match_query = {
+        "$or": [
+            {"aai_uid": {"$ne": None}},
+            {"$and": [
+                {"aai_uid": {"$eq": None}},
+                {"user_id": {"$eq": None}}
+            ]}
+         ]}
+else:
+    match_query = {
+        "$or": [
+            {"user_id": {"$ne": None}},
+            {"$and": [
+                {"user_uid": {"$eq": -1}}
+            ]}
+         ]}
+
+# start/end date of request
 if args.starttime is not None:
     if "timestamp" not in match_query:
         match_query["timestamp"] = {}
@@ -161,6 +200,7 @@ logging.info("Reading user actions...")
 run.user_actions_all = find_pandas_all(
     rsmetrics_db["user_actions"], match_ua
 ).iloc[:, 1:]
+
 
 logging.info("Reading recommendations...")
 if args.provider == "athena":
@@ -194,25 +234,10 @@ else:
 
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
-
-# Due to the users and services data having nested fields and small number of
-# results (hundreds to a couple of thousands) the pymongoarrow lib is not
-# used to create the data frames. _ids are filtered out from the column
-# results during the query
-logging.info("Reading users...")
-
-run.users = pd.DataFrame(
-    list(rsmetrics_db["users"].find({
-        "$and": [
-            {"provider": {"$in": [args.provider]}},
-            {"$or": [{"created_on": {"$lte": args.endtime}},
-                     {"created_on": None}]},
-            {"$or": [{"deleted_on": {"$gte": args.starttime}},
-                     {"deleted_on": None}]},
-        ]},
-        {"_id": 0}))
-)
-
+# converts resource_id from string to integer
+# this is not necessary in resource_ids in user actions or services
+run.recommendations['resource_id'] = \
+    run.recommendations['resource_id'].astype(int)
 
 logging.info("Reading services...")
 run.services = pd.DataFrame(
@@ -239,11 +264,92 @@ run.scientific_domains = pd.DataFrame(
                                    {"_id": 0}))
 )
 
+# The users dataframe is the users found in the user actions
+# that have been matched based on the query filters
+# users dataframe is table of two columns (id and accessed resources)
+# Accessed resources is all unique service ids (apart from -1, i.e. not known)
+# found in both source_resource_id or target_resource_id lists
+logging.info("Reading users...")
+
+# aggregate_pandas_all directly returns a pandas dataframe
+run.users = pd.DataFrame(list(rsmetrics_db["user_actions"].aggregate(
+    [
+        {"$match":  match_ua},
+        {"$group": {
+            "_id": '$'+run.id_field,
+            "source_ids": {"$addToSet": "$source_resource_id"},
+            "target_ids": {"$addToSet": "$target_resource_id"}
+         }},
+        {"$project": {
+            "accessed_resources": {
+                "$setUnion": [
+                    {"$filter": {
+                        "input": {"$setUnion": ["$source_ids", "$target_ids"]},
+                        "as": "resource_id",
+                        "cond": {"$ne": ["$$resource_id", -1]}
+                     }}, []]
+                }
+            }}
+        ])))
+
+run.users = run.users.rename(columns={'_id': 'id'})
+
+# Filtering collections
+try:
+    # keeps only registered users
+    run.users = run.users[run.users['id'].find_registered(run.schema)]
+
+    # convert timestamp column to datetime object
+    run.user_actions_all["timestamp"] = (
+        pd.to_datetime(run.user_actions_all["timestamp"])
+    )
+
+    run.recommendations["timestamp"] = (
+        pd.to_datetime(run.recommendations["timestamp"])
+    )
+
+    # remove user actions when service does not exist in services' catalog
+    # not-known services (i.e. -1) are not excluded
+    # (there is no need to do this for users, since users are already
+    # built upon user actions)
+    # also a source_resource_id or target_resource_id will always be
+    # an integer (-1 indicates not known)
+    run.user_actions = run.user_actions_all[
+        (run.user_actions_all["source_resource_id"]
+         .isin(run.services["id"].tolist() + [-1]))
+    ]
+    run.user_actions = run.user_actions[
+        (run.user_actions["target_resource_id"]
+         .isin(run.services["id"].tolist() + [-1]))
+    ]
+
+    # remove recommendations when user or service does not exist in users' or
+    # services' catalogs
+    # anonymous users (i.e. -1 or None in legacy or current mode respectively)
+    # are not excluded
+    # not-known services (i.e. -1) are not excluded
+    # (having both -1 and None cover both schemas -current or legacy-)
+    # meanwhile, current schema can not have -1 while legacy None,
+    # so there is no issue to filter both entries concurrently
+    run.recommendations = run.recommendations[
+        run.recommendations[run.id_field].isin(run.users["id"].tolist() +
+                                               [-1, None])
+    ]
+
+    run.recommendations = run.recommendations[
+        (run.recommendations["resource_id"]
+         .isin(run.services["id"].tolist() + [-1]))
+    ]
+
+except Exception as e:
+    print(''.join(traceback.format_exception(None, e, e.__traceback__)))
+    pass
+
 data_errors = []
 if len(run.user_actions_all) == 0:
     data_errors.append("No user actions found")
 
-if len(run.user_actions_all) == 0:
+if len(run.recommendations) == 0:
     data_errors.append("No recommendations found")
 
 if len(run.services) == 0:
@@ -264,44 +370,7 @@ if data_errors:
     logging.error("Not enough data. Skipping computations!")
     sys.exit(1)
 
-
-# convert timestamp column to datetime object
-run.user_actions_all["timestamp"] = (
-    pd.to_datetime(run.user_actions_all["timestamp"])
-)
-
-run.recommendations["timestamp"] = (
-    pd.to_datetime(run.recommendations["timestamp"])
-)
-
-# remove user actions when user or service does not exist in users' or
-# services' catalogs adding -1 in all catalogs indicating the anonynoums
-# users or not-known services
-run.user_actions = run.user_actions_all[
-    run.user_actions_all["user_id"].isin(run.users["id"].tolist() + [-1])
-]
-run.user_actions = run.user_actions[
-    (run.user_actions["source_resource_id"]
-     .isin(run.services["id"].tolist() + [-1]))
-]
-run.user_actions = run.user_actions[
-    (run.user_actions["target_resource_id"]
-     .isin(run.services["id"].tolist() + [-1]))
-]
-
-# remove recommendations when user or service does not exist in users' or
-# services' catalogs adding -1 in all catalogs indicating the anonynoums users
-# or not-known services
-run.recommendations = run.recommendations[
-    run.recommendations["user_id"].isin(run.users["id"].tolist() + [-1])
-]
-run.recommendations = run.recommendations[
-    (run.recommendations["resource_id"]
-     .isin(run.services["id"].tolist() + [-1]))
-]
-
 run.provider = args.provider
-
 output = {"timestamp": str(datetime.utcnow())}
 metrics = []
 statistics = []
@@ -341,11 +410,14 @@ output["metrics"] = metrics
 output["statistics"] = statistics
 output["type"] = "service"
 output["provider"] = args.provider
+output["schema"] = run.schema
 
 # this line is necessary in order to store the output to MongoDB
 jsonstr = json.dumps(output, indent=4)
 
-rsmetrics_db["metrics"].delete_many({"provider": args.provider})
+# keep one metrics collection per schema
+rsmetrics_db["metrics"].delete_many({"$and": [{"provider": args.provider},
+                                              {"schema": run.schema}]})
 rsmetrics_db["metrics"].insert_one(output)
 
 # result in stdout console (not in logs)
