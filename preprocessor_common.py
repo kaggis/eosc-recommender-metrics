@@ -8,7 +8,6 @@ import natsort as ns
 from natsort import natsorted
 import logging
 import pandas as pd
-import os
 import re
 
 # local lib
@@ -69,6 +68,16 @@ required = parser.add_argument_group("required arguments")
 optional = parser.add_argument_group("optional arguments")
 
 optional.add_argument(
+    "-r",
+    "--rewards",
+    metavar=("FILEPATH"),
+    help="path to transition rewards data file",
+    default="./resources/transition_rewards.csv",
+    type=str,
+    dest="rewards"
+)
+
+optional.add_argument(
     "-c",
     "--config",
     metavar=("FILEPATH"),
@@ -111,6 +120,7 @@ optional.add_argument(
           "resources"),
     action="store_true",
 )
+
 optional.add_argument(
     "-h", "--help", action="help", help="show this help message and exit"
 )
@@ -285,12 +295,8 @@ reward_mapping = {
 # reads the Transition rewards csv file once
 # consequently, one argument has been added to the
 # called function
-ROOT_DIR = "./"
 
-TRANSITION_REWARDS_CSV_PATH = os.path.join(
-    ROOT_DIR, "resources", "transition_rewards.csv"
-)
-transition_rewards_df = pd.read_csv(TRANSITION_REWARDS_CSV_PATH,
+transition_rewards_df = pd.read_csv(args.rewards,
                                     index_col="source")
 
 # reading resources to be used for filtering user_actions
