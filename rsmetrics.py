@@ -234,10 +234,6 @@ else:
 
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
-# converts resource_id from string to integer
-# this is not necessary in resource_ids in user actions or services
-run.recommendations['resource_id'] = \
-    run.recommendations['resource_id'].astype(int)
 
 logging.info("Reading services...")
 run.services = pd.DataFrame(
@@ -304,10 +300,6 @@ try:
         pd.to_datetime(run.user_actions_all["timestamp"])
     )
 
-    run.recommendations["timestamp"] = (
-        pd.to_datetime(run.recommendations["timestamp"])
-    )
-
     # remove user actions when service does not exist in services' catalog
     # not-known services (i.e. -1) are not excluded
     # (there is no need to do this for users, since users are already
@@ -322,6 +314,15 @@ try:
         (run.user_actions["target_resource_id"]
          .isin(run.services["id"].tolist() + [-1]))
     ]
+
+    # converts resource_id from string to integer
+    # this is not necessary in resource_ids in user actions or services
+    run.recommendations['resource_id'] = \
+        run.recommendations['resource_id'].astype(int)
+
+    run.recommendations["timestamp"] = (
+        pd.to_datetime(run.recommendations["timestamp"])
+    )
 
     # remove recommendations when user or service does not exist in users' or
     # services' catalogs
