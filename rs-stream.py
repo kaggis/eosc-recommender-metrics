@@ -11,7 +11,6 @@ import pymongo
 import dateutil.parser
 from datetime import datetime
 import re
-import os
 import pandas as pd
 import reward_mapping as rm
 
@@ -44,17 +43,6 @@ reward_mapping = {
     "exit": 0.0,
 }
 
-# reward_mapping.py is modified so that the function
-# reads the Transition rewards csv file once
-# consequently, one argument has been added to the
-# called function
-ROOT_DIR = "./"
-
-TRANSITION_REWARDS_CSV_PATH = os.path.join(
-    ROOT_DIR, "resources", "transition_rewards.csv"
-)
-transition_rewards_df = pd.read_csv(TRANSITION_REWARDS_CSV_PATH,
-                                    index_col="source")
 
 # Streaming connector using stomp protocol to ingest data from rs databus
 
@@ -74,6 +62,14 @@ def connect_subscribe(msg_queue, username, password, topic):
 
 
 def main(args):
+
+    # reward_mapping.py is modified so that the function
+    # reads the Transition rewards csv file once
+    # consequently, one argument has been added to the
+    # called function
+    transition_rewards_df = pd.read_csv(args.rewards,
+                                        index_col="source")
+
     # extract provider arg
     provider = args.provider
 
@@ -446,6 +442,15 @@ if __name__ == "__main__":
         help="name of the provider",
         required=True,
         dest="provider",
+    )
+
+    parser.add_argument(
+        "-r",
+        "--rewards",
+        metavar="STRING",
+        help="path to transition rewards info file",
+        required=True,
+        dest="rewards",
     )
 
     # Pass the arguments to main method
