@@ -206,7 +206,7 @@ def html_kpis(report_name):
     return render_template("./kpis.html", data=result)
 
 
-@app.route("/ui/reports/<string:report_name>/<string:schema>/graphs",
+@app.route("/ui/reports/<string:report_name>/graphs",
            strict_slashes=False)
 def html_graphs(report_name):
     """Serve html page about graphs per provider"""
