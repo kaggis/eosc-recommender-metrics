@@ -110,7 +110,8 @@ def main(args):
                 user_id = message["user_id"]
 
             if "aai_uid" in message:
-                aai_uid = message["aai_uid"]
+                aai_uid = message["aai_uid"] if not message["aai_uid"] == "" \
+                                             else None
 
             if "unique_id" in message:
                 unique_id = str(message["unique_id"])
@@ -331,6 +332,9 @@ def main(args):
 
             if "aai_uid" in message["context"]:
                 aai_uid = message["context"]["aai_uid"]
+                aai_uid = message["context"]["aai_uid"] if not \
+                    message["context"]["aai_uid"] == "" \
+                    else None
 
             if "unique_id" in message["context"]:
                 unique_id = str(message["context"]["unique_id"])

@@ -334,7 +334,7 @@ for ua in recdb[col].find(query).sort("user"):
         user_id = ua["user"]
 
     if "aai_uid" in ua:
-        aai_uid = ua["aai_uid"]
+        aai_uid = ua["aai_uid"] if not ua["aai_uid"] == "" else None
 
     if "unique_id" in ua:
         unique_id = str(ua["unique_id"])
