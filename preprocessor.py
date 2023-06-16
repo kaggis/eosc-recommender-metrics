@@ -172,7 +172,7 @@ if provider["name"] == "cyfronet":
             user_id = rec["user"]
 
         if "aai_uid" in rec:
-            aai_uid = rec["aai_uid"]
+            aai_uid = rec["aai_uid"] if not rec["aai_uid"] == "" else None
 
         if "unique_id" in rec:
             unique_id = str(rec["unique_id"])
@@ -204,7 +204,7 @@ elif provider["name"] == "athena":
             user_id = rec["user_id"]
 
         if "aai_uid" in rec:
-            aai_uid = rec["aai_uid"]
+            aai_uid = rec["aai_uid"] if not rec["aai_uid"] == "" else None
 
         if "unique_id" in rec:
             unique_id = str(rec["unique_id"])
