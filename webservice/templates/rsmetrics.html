@@ -65,7 +65,7 @@
                 <div class="app-header-left">
                     <div class="widget-content"><span class="text-light h5">Report:</span></div> 
                     <div class="widget-content"><select class="form-select" onchange="if (this.value) window.location.href=this.value">
-                        {%for item in data.reports | sort %}
+                        {%for item in data.reports %}
                         <option value="/ui/reports/{{item}}" {%if item==data.report %} selected {%endif%}>{{item}}</option>
                         {%endfor%}
                     </select></div>
