@@ -94,8 +94,11 @@ def respond_stat_404(stat_name):
 
 
 def db_get_report_names():
-    """Get a list of the names of the reports handled in the system"""
-    result = mongo.db.metrics.find({}, {"_id": 0, "name": 1})
+    """Get a list of the names of the reports handled in the system
+    sorted by the most recent evaluated report
+    """
+    result = mongo.db.metrics.find(
+        {}, {"name": 1}).sort("_id", -1)
     reports = []
     for item in result:
         reports.append(item["name"])
