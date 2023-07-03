@@ -1,20 +1,26 @@
-# eosc-recommender-metrics
-
-A framework for counting the recommender metrics
-
-## Preprocessor v.0.2
+# Recommender Metrics Framework
+A framework for generating statistics, metrics, KPIs, and graphs for Recommender Systems
 
 <p align="center">
-<a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png">
-<img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png" width="70%"/>
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/flow.png">
+<img src="website/docs/static/img/flow.png" width="70%"/>
 </a>
 </p>
 
-## RS metrics v.0.2
+
+## Preprocessor
 
 <p align="center">
-<a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png">
-<img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png" width="70%"/>
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/preprocessor.png">
+<img src="website/docs/static/img/preprocessor.png" width="70%"/>
+</a>
+</p>
+
+## RS metrics
+
+<p align="center">
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/rsmetrics.png">
+<img src="website/docs/static/img/rsmetrics.png" width="70%"/>
 </a>
 </p>
 
