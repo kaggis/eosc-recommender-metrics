@@ -98,15 +98,34 @@ optional arguments:
 
 ### Utilities
 
-#### Get service catalog script (./get_service_catalog.py)
+#### Get item catalog script (./get_catalog.py)
 
-This script contacts EOSC Marketplace remote service api and generates a csv with a list of all available services, their name, id and url
+This script contacts EOSC Marketplace remote service api and generates a csv with a list of all available items of a specific catalog (e.g. services, datasets, trainings, publications, data_sources, ), their name, id and url
+
 
 To execute the script issue:
 ```
 chmod u+x ./get_service_catalog.py
-./get_service_catalog.py -u https://remote.example.foo 
+./get_catalog.py -u https://remote.example.foo -c service -b 100 -l 2000 -o `my-catalog.csv`
 ```
+
+Arguments:
+- `-u` or `-url`: the endpoint url of the marketplace search service
+- `-o` or `--output`: this is the output csv file (e.g. `./service_catalog.csv` or `./training_catalog.csv`)
+- `-b` or `--batch`: because search service returns results with pagination this configures the batch for each retrieval (number of items per request)
+- `-l` or `--limit`: (optional) the user can specify a limit of max items to be retrieves (this is handy for large catalogs if you want to receive a subset)
+- `-c` or `--category`: the category of list of items you want to retrieve
+
+currently supported category types for marketplace:
+- `service`
+- `training`
+- `dataset` (this is for items of the `DATA` catalog)
+- `data_source` (this is for items of the `DATASOURCES` catalog)
+- `publication`
+- `guideline` (this is for items of the `INTEROPERABILITY GUIDELINES` catalog)
+- `software`
+- `bundle`
+- `other`
 
 ##### Serve Evaluation Reports as a Service
 

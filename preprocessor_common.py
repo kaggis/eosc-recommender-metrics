@@ -13,9 +13,9 @@ import re
 # local lib
 import reward_mapping as rm
 
-from get_service_catalog import (
-   get_services_from_search,
-   output_services_to_csv,
+from get_catalog import (
+   get_items_from_search,
+   output_items_to_csv,
 )
 
 logging.basicConfig(
@@ -183,12 +183,12 @@ if not args.use_cache:
         "Retrieving page: marketplace list of services... \nGrabbing url: {0}"
         .format(service_list_url)
     )
-    eosc_service_results = get_services_from_search(service_list_url)
+    eosc_service_results = get_items_from_search(service_list_url)
 
     if config["service"]["store"]:
         # output to csv
-        output_services_to_csv(eosc_service_results,
-                               config["service"]["store"])
+        output_items_to_csv(eosc_service_results,
+                            config["service"]["store"])
         print("File written to {}".format(config["service"]["store"]))
 
 # if cache file is used
