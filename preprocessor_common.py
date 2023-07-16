@@ -11,8 +11,6 @@ import pandas as pd
 import re
 
 # local lib
-import reward_mapping as rm
-
 from get_catalog import (
    get_items_from_search,
    output_items_to_csv,
@@ -66,16 +64,6 @@ parser.print_help = print_help(parser.print_help)
 parser._action_groups.pop()
 required = parser.add_argument_group("required arguments")
 optional = parser.add_argument_group("optional arguments")
-
-optional.add_argument(
-    "-r",
-    "--rewards",
-    metavar=("FILEPATH"),
-    help="path to transition rewards data file",
-    default="./resources/transition_rewards.csv",
-    type=str,
-    dest="rewards"
-)
 
 optional.add_argument(
     "-c",
@@ -183,7 +171,7 @@ if not args.use_cache:
         "Retrieving page: marketplace list of services... \nGrabbing url: {0}"
         .format(service_list_url)
     )
-    eosc_service_results = get_items_from_search(service_list_url)
+    eosc_service_results = get_items_from_search(service_list_url, 'service')
 
     if config["service"]["store"]:
         # output to csv
@@ -267,38 +255,6 @@ logging.info("Resources collection stored...")
 
 # C. Working on user_actions
 
-
-class Mock:
-    pass
-
-
-class User_Action:
-    def __init__(self, source_page_id, target_page_id, order):
-        self.source = Mock()
-        self.target = Mock()
-        self.action = Mock()
-        self.source.page_id = source_page_id
-        self.target.page_id = target_page_id
-        self.action.order = order
-
-
-reward_mapping = {
-    "order": 1.0,
-    "interest": 0.7,
-    "mild_interest": 0.3,
-    "simple_transition": 0.0,
-    "unknown_transition": 0.0,
-    "exit": 0.0,
-}
-
-# reward_mapping.py is modified so that the function
-# reads the Transition rewards csv file once
-# consequently, one argument has been added to the
-# called function
-
-transition_rewards_df = pd.read_csv(args.rewards,
-                                    index_col="source")
-
 # reading resources to be used for filtering user_actions
 resources = pd.DataFrame(
     list(rsmetrics_db["resources"]
@@ -368,20 +324,6 @@ for ua in recdb[col].find(query).sort("user"):
     except KeyError:
         target_service_id = -1
 
-    # function has been modified where one more argument is given
-    # in order to avoid time-consuming processing of reading csv file
-    # for every func call
-    symbolic_reward = rm.ua_to_reward_id(
-        transition_rewards_df,
-        User_Action(
-            ua["source"]["page_id"].rstrip('/'),
-            ua["target"]["page_id"].rstrip('/'),
-            ua["action"]["order"]
-        ),
-    )
-
-    reward = reward_mapping[symbolic_reward]
-
     luas.append(
         {
             "user_id": user_id,
@@ -389,7 +331,7 @@ for ua in recdb[col].find(query).sort("user"):
             "unique_id": unique_id,
             "source_resource_id": int(source_service_id),
             "target_resource_id": int(target_service_id),
-            "reward": float(reward),
+            "reward": 1.0 if ua["action"]["order"] else 0.0,
             "panel": ua["source"]["root"]["type"],
             "timestamp": ua["timestamp"],
             "source_path": source_path,
