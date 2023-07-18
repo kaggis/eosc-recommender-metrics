@@ -11,38 +11,11 @@ import pymongo
 import dateutil.parser
 from datetime import datetime
 import re
-import pandas as pd
-import reward_mapping as rm
 
 # mapping recommendations
 rec_map = {'publications': 'publication', 'datasets': 'dataset',
            'software': 'software', 'services': 'service',
            'trainings': 'training', 'other_research_product': 'other'}
-
-
-class Mock:
-    pass
-
-
-class User_Action:
-    def __init__(self, source_page_id, target_page_id, order):
-        self.source = Mock()
-        self.target = Mock()
-        self.action = Mock()
-        self.source.page_id = source_page_id
-        self.target.page_id = target_page_id
-        self.action.order = order
-
-
-reward_mapping = {
-    "order": 1.0,
-    "interest": 0.7,
-    "mild_interest": 0.3,
-    "simple_transition": 0.0,
-    "unknown_transition": 0.0,
-    "exit": 0.0,
-}
-
 
 # Streaming connector using stomp protocol to ingest data from rs databus
 
@@ -62,13 +35,6 @@ def connect_subscribe(msg_queue, username, password, topic):
 
 
 def main(args):
-
-    # reward_mapping.py is modified so that the function
-    # reads the Transition rewards csv file once
-    # consequently, one argument has been added to the
-    # called function
-    transition_rewards_df = pd.read_csv(args.rewards,
-                                        index_col="source")
 
     # extract provider arg
     provider = args.provider
@@ -150,19 +116,6 @@ def main(args):
             if source_path in resource_lookup:
                 source_resource_id = resource_lookup[source_path]
 
-            # function has been modified where one more argument is given
-            # in order to avoid time-consuming processing of reading csv file
-            # for every func call
-            symbolic_reward = rm.ua_to_reward_id(
-                transition_rewards_df,
-                User_Action(
-                    source_path.rstrip('/'),
-                    target_path.rstrip('/'),
-                    message["action"]["order"]),
-                )
-
-            reward = reward_mapping[symbolic_reward]
-
             record = {
                 "timestamp": dateutil.parser.isoparse(message["timestamp"]),
                 "user_id": user_id,
@@ -173,7 +126,7 @@ def main(args):
                 "source_path": source_path,
                 "target_resource_id": target_resource_id,
                 "source_resource_id": source_resource_id,
-                "reward": float(reward),
+                "reward": 1.0 if message["action"]["order"] else 0.0,
                 "type": "service",
                 "ingestion": "stream",
                 "provider": provider,
@@ -446,15 +399,6 @@ if __name__ == "__main__":
         help="name of the provider",
         required=True,
         dest="provider",
-    )
-
-    parser.add_argument(
-        "-r",
-        "--rewards",
-        metavar="STRING",
-        help="path to transition rewards info file",
-        required=True,
-        dest="rewards",
     )
 
     # Pass the arguments to main method
