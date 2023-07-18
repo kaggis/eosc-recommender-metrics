@@ -10,7 +10,6 @@ import ssl
 import pymongo
 import dateutil.parser
 from datetime import datetime
-import re
 
 # mapping recommendations
 rec_map = {'publications': 'publication', 'datasets': 'dataset',
@@ -36,14 +35,6 @@ def connect_subscribe(msg_queue, username, password, topic):
 
 def main(args):
 
-    # extract provider arg
-    provider = args.provider
-
-    # init resource_lookup dictionary where we store service paths to
-    # corresponding ids
-    resource_lookup = {}
-    reverse_resource_lookup = {}
-
     # Create a listener class to react on each message received from the queue
     class UserActionsListener(stomp.ConnectionListener):
         def __init__(self, conn):
@@ -64,8 +55,8 @@ def main(args):
             panel = "other"
             target_path = ""
             source_path = ""
-            target_resource_id = -1
-            source_resource_id = -1
+            target_resource_id = None
+            source_resource_id = None
             # in current mode there should be not found user_id=-1
             # a -1 indicates a legacy mode,
             # since it is current user_id is set with None
@@ -89,32 +80,16 @@ def main(args):
                 if "root" in message["source"]:
                     if "type" in message["source"]["root"]:
                         panel = message["source"]["root"]["type"]
+                    if "resource_type" in message["source"]["root"]:
+                        resource_type = \
+                            message["source"]["root"]["resource_type"]
+                    if "resource_id" in message["source"]["root"]:
+                        target_resource_id = \
+                            message["source"]["root"]["resource_id"]
 
             if "target" in message:
                 if "page_id" in message["target"]:
                     target_path = message["target"]["page_id"]
-
-            # check if action comes from the search page
-            # then correct the target_path which includes the EOSC Marketplace
-            # website with the actual service's landing page based on the
-            # resource_lookup (the reversed version)
-            pattern = r"search%2F(?:all|dataset|software|service" + \
-                      "|data-source|training|guideline|other)"
-            if re.findall(pattern, source_path):
-                if message["source"]["root"]["resource_type"] == 'service':
-                    source_path = "/services"
-                    _id = int(message["source"]["root"]["resource_id"])
-                    target_path = reverse_resource_lookup[_id]
-
-            # if path exist in resource lookup dictionary,
-            # identify the resource id
-            if target_path in resource_lookup:
-                target_resource_id = resource_lookup[target_path]
-
-            # if path exist in resource lookup dictionary,
-            # identify the resource id
-            if source_path in resource_lookup:
-                source_resource_id = resource_lookup[source_path]
 
             record = {
                 "timestamp": dateutil.parser.isoparse(message["timestamp"]),
@@ -127,9 +102,8 @@ def main(args):
                 "target_resource_id": target_resource_id,
                 "source_resource_id": source_resource_id,
                 "reward": 1.0 if message["action"]["order"] else 0.0,
-                "type": "service",
+                "type": resource_type,
                 "ingestion": "stream",
-                "provider": provider,
             }
 
             rsmetrics_db["user_actions"].insert_one(record)
@@ -166,7 +140,6 @@ def main(args):
                               'deleted_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00'))
                               if message['cud'] == 'delete' else None,
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -184,7 +157,6 @@ def main(args):
                               'created_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00')),
                               'deleted_on': None,
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -217,7 +189,6 @@ def main(args):
                               'category':
                               message['record']['categories'],
                               'type': 'service',
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -240,7 +211,6 @@ def main(args):
                               message['record']['scientific_domains'],
                               'category': message['record']['categories'],
                               'type': 'service',
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -293,22 +263,17 @@ def main(args):
                 unique_id = str(message["context"]["unique_id"])
 
             # handle data accordingly
-            if provider == "cyfronet":
-                record = {
-                    "timestamp": dateutil.parser.isoparse(
-                                 message["context"]["timestamp"]),
-                    "user_id": user_id,
-                    "aai_uid": aai_uid,
-                    "unique_id": unique_id,
-                    "resource_ids": message["recommendations"],
-                    "type": rec_map[message["panel_id"]],
-                    "ingestion": "stream",
-                    "provider": provider,
-                }
-
-            else:
-                logging.info("Currently, only recommendations from \
-                                 Cyfronet are supported")
+            record = {
+                "timestamp": dateutil.parser.isoparse(
+                             message["context"]["timestamp"]),
+                "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
+                "resource_ids": message["recommendations"],
+                "type": rec_map[message["panel_id"]],
+                "ingestion": "stream",
+                "provider": message["recommender_systems"][0],
+            }
 
             rsmetrics_db["recommendations"].insert_one(record)
 
@@ -320,15 +285,6 @@ def main(args):
 
     username, password = args.auth.split(":")
     host, port = args.queue.split(":")
-
-    # get resources (services for the time being)
-    resources = rsmetrics_db["resources"].find({}, {"_id": 0,
-                                               "path": 1, "id": 1})
-    for item in resources:
-        # if the service item has indeed an updated path (url) grab it
-        if "path" in item:
-            resource_lookup[item["path"]] = item["id"]
-            reverse_resource_lookup[item["id"]] = item["path"]
 
     # create the connection to the queue
     msg_queue = stomp.Connection([(host, port)], heartbeats=(10000, 5000))
@@ -391,14 +347,6 @@ if __name__ == "__main__":
         help="datastore uri",
         required=True,
         dest="datastore",
-    )
-    parser.add_argument(
-        "-p",
-        "--provider",
-        metavar="STRING",
-        help="name of the provider",
-        required=True,
-        dest="provider",
     )
 
     # Pass the arguments to main method
