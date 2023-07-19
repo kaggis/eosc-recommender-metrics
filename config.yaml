@@ -2,7 +2,7 @@
 # a list of:
 # name/tag, type of database, hostname, port, database
 providers:
-   - name: cyfronet
+   - name: marketplace_rs
      db: "mongodb://localhost:27017/recommender_dev"
    - name: athena
      db: "mongodb://localhost:27017/athena_dev"

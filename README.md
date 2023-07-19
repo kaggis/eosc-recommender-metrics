@@ -37,21 +37,21 @@ A framework for generating statistics, metrics, KPIs, and graphs for Recommender
 5. Configure `./preprocessor_common.py`, `./preprocessor.py` and `./rsmetrics.py` by editting the `config.yaml` or providing another with `-c`.
 6. Run from terminal: `./preprocessor_common.py` in order to gather `users` and `resources` and store them in the `Datastore`:
 ```bash
-./preprocessor_common.py # this will ingest users and resources [from scratch] by retrieving the data from 'cyfronet' provider (which is specified in the config file
-./preprocessor_common.py -p cyfronet # equivalent to first one
-./preprocessor_common.py -p cyfronet --use-cache # equivalent to first one but use the cache file to read resources instead of downloading them via the EOSC Marketplace
-./preprocessor_common.py -p athena # currently is not working since users collection only exist in 'cyfronet'
+./preprocessor_common.py # this will ingest users and resources [from scratch] by retrieving the data from 'marketplace_rs' provider (which is specified in the config file
+./preprocessor_common.py -p marketplace_rs # equivalent to first one
+./preprocessor_common.py -p marketplace_rs --use-cache # equivalent to first one but use the cache file to read resources instead of downloading them via the EOSC Marketplace
+./preprocessor_common.py -p athena # currently is not working since users collection only exist in 'marketplace_rs'
 ```
 7. Run from terminal: `./preprocessor.py -p <provider>` in order to gather `user_actions` and `recommendations` from the particular provider and store them in the `Datastore`:
 ```bash
-./preprocessor.py # this will ingest user_actions and recommendations [from scratch] by retrieving the data from 'cyfronet' provider (which is specified in the config file
-./preprocessor.py -p cyfronet # equivalent to first one
+./preprocessor.py # this will ingest user_actions and recommendations [from scratch] by retrieving the data from 'marketplace_rs' provider (which is specified in the config file
+./preprocessor.py -p marketplace_rs # equivalent to first one
 ./preprocessor.py -p athena # same procedure as the first one but for 'athena' provider
 ```
 9. Run from terminal: `./rsmetrics.py -p <provider>` in order to gather the respective data (`users`, `resources`, `user_actions` and `recommendations`), calculate `statistics` and `metrics` and store them in the `Datastore`, concerning that particular provider:
 ```bash
-./rsmetrics.py # this will calculate and store statistics and metrics concerning data (users, resources, user_actions and recommendations) concerning the specified provider (which by default is 'cyfronet')
-./rsmetrics.py -p cyfronet # equivalent to first one
+./rsmetrics.py # this will calculate and store statistics and metrics concerning data (users, resources, user_actions and recommendations) concerning the specified provider (which by default is 'marketplace_rs')
+./rsmetrics.py -p marketplace_rs # equivalent to first one
 ./rsmetrics.py -p athena # same procedure as the first one for 'athena' provider
 ```
 
