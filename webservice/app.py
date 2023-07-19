@@ -134,7 +134,7 @@ def html_metrics(report_name):
     stats_needed = [
         "users",
         "recommended_items",
-        "services",
+        "items",
         "user_actions",
         "user_actions_registered",
         "user_actions_registered_perc",
@@ -190,8 +190,8 @@ def html_kpis(report_name):
     metrics_needed = [
         "hit_rate",
         "click_through_rate",
-        "top5_services_ordered",
-        "top5_services_recommended",
+        "top5_items_ordered",
+        "top5_items_recommended",
         "top5_categories_ordered",
         "top5_categories_recommended",
         "top5_scientific_domains_ordered",

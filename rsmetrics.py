@@ -235,8 +235,8 @@ else:
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
 
-logging.info("Reading services...")
-run.services = pd.DataFrame(
+logging.info("Reading items...")
+run.items = pd.DataFrame(
     list(rsmetrics_db["resources"].find({
         "$and": [
             {"provider": {"$in": [args.provider]}},
@@ -300,23 +300,23 @@ try:
         pd.to_datetime(run.user_actions_all["timestamp"])
     )
 
-    # remove user actions when service does not exist in services' catalog
-    # not-known services (i.e. -1) are not excluded
+    # remove user actions when item does not exist in items' catalog
+    # not-known items (i.e. -1) are not excluded
     # (there is no need to do this for users, since users are already
     # built upon user actions)
     # also a source_resource_id or target_resource_id will always be
     # an integer (-1 indicates not known)
     run.user_actions = run.user_actions_all[
         (run.user_actions_all["source_resource_id"]
-         .isin(run.services["id"].tolist() + [-1]))
+         .isin(run.items["id"].tolist() + [-1]))
     ]
     run.user_actions = run.user_actions[
         (run.user_actions["target_resource_id"]
-         .isin(run.services["id"].tolist() + [-1]))
+         .isin(run.items["id"].tolist() + [-1]))
     ]
 
     # converts resource_id from string to integer
-    # this is not necessary in resource_ids in user actions or services
+    # this is not necessary in resource_ids in user actions or items
     run.recommendations['resource_id'] = \
         run.recommendations['resource_id'].astype(int)
 
@@ -325,10 +325,10 @@ try:
     )
 
     # remove recommendations when user or service does not exist in users' or
-    # services' catalogs
+    # items' catalogs
     # anonymous users (i.e. -1 or None in legacy or current mode respectively)
     # are not excluded
-    # not-known services (i.e. -1) are not excluded
+    # not-known items (i.e. -1) are not excluded
     # (having both -1 and None cover both schemas -current or legacy-)
     # meanwhile, current schema can not have -1 while legacy None,
     # so there is no issue to filter both entries concurrently
@@ -339,7 +339,7 @@ try:
 
     run.recommendations = run.recommendations[
         (run.recommendations["resource_id"]
-         .isin(run.services["id"].tolist() + [-1]))
+         .isin(run.items["id"].tolist() + [-1]))
     ]
 
 except Exception as e:
@@ -353,7 +353,7 @@ if len(run.user_actions_all) == 0:
 if len(run.recommendations) == 0:
     data_errors.append("No recommendations found")
 
-if len(run.services) == 0:
+if len(run.items) == 0:
     data_errors.append("No services found")
 
 if len(run.users) == 0:
