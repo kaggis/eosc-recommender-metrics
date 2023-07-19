@@ -3,6 +3,7 @@ import requests
 import sys
 import csv
 import argparse
+from pymongo import MongoClient
 
 
 def prep_url(category, item):
@@ -21,16 +22,19 @@ def prep_url(category, item):
         return "search/result"
 
 
-def get_items_from_search(endpoint_url, category, batch=100, limit=-1):
+def get_items_from_search(endpoint_url, category, providers=[], batch=100,
+                          limit=-1):
     """Given an eosc search service endpoint url and an item category and batch
     number the function tries to call iteratively the json endpoint and
     retrive the list of items of this category in the search service.
-    Finally it produces a list of triplets [item_id, item_name, item_path]
+    Finally it produces a list of item objects
 
     Args:
         endpoint (string): A valid EOSC search endpoint
         category (string): A category item name (e.g. service, traning)
+        providers (string): A list of providers handling the items
         batch (int): number of how many items to iterate. Max = 100
+
 
     Returns:
         list of lists: A list of item entries. Each item entry is a
@@ -78,16 +82,27 @@ def get_items_from_search(endpoint_url, category, batch=100, limit=-1):
         if num_of_results == 0:
             break
 
-        items.extend(
-            [
-                [
-                    item.get("id"),
-                    item.get("title")[0],
-                    prep_url(category, item),
-                ]
-                for item in data.get("results")
-            ]
-        )
+        for item in data.get("results"):
+            result = {
+                "id": item.get("id"),
+                "name": item.get("title")[0],
+                "path": prep_url(category, item),
+                "created_on": None,
+                "deleted_on": None,
+                "type": category,
+                "ingestion": "batch"
+            }
+
+            if providers:
+                result["provider"] = providers
+
+            if "scientific_domains" in item:
+                result["scientific_domain"] = item["scientific_domains"]
+
+            if "categories" in item:
+                result["category"] = item["categories"]
+
+            items.append(result)
 
         # if user enforced a maximum limit on the retrieved check
         if limit > 0:
@@ -101,30 +116,116 @@ def get_items_from_search(endpoint_url, category, batch=100, limit=-1):
         print("Items Retrieved till now... {}".format(len(items)))
         cursor = data.get("nextCursorMark")
 
-    # sort by item id
-    items = sorted(items, key=lambda x: x[0])
-
     return items
 
 
 def output_items_to_csv(items, output):
+    """Given a list of items save them to a csv file
+
+    Args:
+        items (list): list of items
+        output (string): filename to csv file
+    """
+
+    # from a list of items create a list of three item arrays
+    # [item_id, item_name, item_path]
+
+    csv_friendly_list = [
+        [item["id"], item["name"], item["path"]] for item in items
+    ]
+
+    # save list of three tuples in csv
     with open(output, "w") as f:
         writer = csv.writer(f)
-        writer.writerows(items)
+        writer.writerows(csv_friendly_list)
+
+
+def ouput_items_to_mongo(items, mongo_uri, category, providers,
+                         clear_prev=True):
+    """Gets a list of items and stores them to a mongodb database under
+    collection: resources
+
+    Args:
+        items (list): the list of items
+        mongo_uri (string): the mongodb service uri containing the database
+        host and the database name
+        category: the category of items to be stored
+        providers: the providers of that are handling the items
+        clear_prev (boolean): clear previous results
+
+    Returns:
+        (integer, integer): a tuple with number of items inserted into the
+        database and previous items cleared
+    """
+
+    # initialize db client
+    mc = MongoClient(mongo_uri)
+    # get the db name from uri that client parsed
+    db_name = mc.get_default_database().name
+
+    # always save to a collection named resources
+    col_name = "resources"
+
+    # get database and collection objects
+    db = mc[db_name]
+    col = db[col_name]
+
+    result_del = []
+
+    # by default clear previous results
+    if clear_prev:
+        result_del = col.delete_many(
+            {
+                "provider": {"$in": providers},
+                "type": category,
+                "ingestion": "batch",
+            }
+        )
+
+    result = col.insert_many(items)
+    # close connection to the datastore
+    mc.close()
+
+    # return number of inserted items
+    return (len(result.inserted_ids), result_del.deleted_count)
 
 
 # Main logic
 def main(args=None):
+
+    providers = args.providers.split(",")
+
     # begin collecting items from url per batch number
     print("Connecting to: {}... and retrieving {} items".format(
         args.url, args.category
         ))
+
     items = get_items_from_search(
-        args.url, args.category, int(args.batch), int(args.limit)
+        args.url, args.category, providers, int(args.batch), int(args.limit)
     )
-    # output to csv
-    output_items_to_csv(items, args.output)
-    print("File written to {}".format(args.output))
+    # output to csv on if argument given
+    if args.output:
+        output_items_to_csv(items, args.output)
+        print("File written to {}".format(args.output))
+
+    # output to mongodb if argument given
+    if args.datastore:
+
+        result_num, result_clear = ouput_items_to_mongo(
+            items, args.datastore, args.category, providers
+        )
+
+        # if previous items have been cleared display message
+        if result_clear:
+            print(
+                "{} previous items cleared from the datastore: {}".format(
+                    result_num, args.datastore
+                )
+            )
+
+        print("{} items stored at datastore: {}".format(
+            result_num, args.datastore
+        ))
 
 
 # Parse arguments and call main
@@ -174,7 +275,25 @@ if __name__ == "__main__":
         help="Output csv file",
         required=False,
         dest="output",
-        default="./service_catalog.csv",
+        default="",
+    )
+    parser.add_argument(
+        "-p",
+        "--providers",
+        metavar="STRING",
+        help="Designate which providers handle the items (comma-separated)",
+        required=False,
+        dest="providers",
+        default="",
+    )
+    parser.add_argument(
+        "-d",
+        "--datastore",
+        metavar="STRING",
+        help="mongo datastore uri - e.g. mongodb://localhost:27017/rsmetrics",
+        required=False,
+        dest="datastore",
+        default="",
     )
 
     # Parse the arguments

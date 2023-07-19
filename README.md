@@ -105,17 +105,18 @@ This script contacts EOSC Marketplace remote service api and generates a csv wit
 
 To execute the script issue:
 ```
-chmod u+x ./get_service_catalog.py
+chmod u+x ./get_catalog.py
 ./get_catalog.py -u https://remote.example.foo -c service -b 100 -l 2000 -o `my-catalog.csv`
 ```
 
 Arguments:
 - `-u` or `-url`: the endpoint url of the marketplace search service
-- `-o` or `--output`: this is the output csv file (e.g. `./service_catalog.csv` or `./training_catalog.csv`)
-- `-b` or `--batch`: because search service returns results with pagination this configures the batch for each retrieval (number of items per request)
-- `-l` or `--limit`: (optional) the user can specify a limit of max items to be retrieves (this is handy for large catalogs if you want to receive a subset)
+- `-o` or `--output`: this is the output csv file (e.g. `./service_catalog.csv` or `./training_catalog.csv`) - optional
+- `-b` or `--batch`: because search service returns results with pagination this configures the batch for each retrieval (number of items per request) - optional
+- `-l` or `--limit`: (optional) the user can specify a limit of max items to be retrieves (this is handy for large catalogs if you want to receive a subset) - optional
 - `-c` or `--category`: the category of list of items you want to retrieve
-
+- `-d` or `--datastore`: mongodb destination database uri to store the results into (e.g. `mongodb://localhost:27017/rsmetrics`) - optional
+- `-p` or `--providers`: state in a comma-separated list wich providers (engines) handle the items of the specific category
 currently supported category types for marketplace:
 - `service`
 - `training`
