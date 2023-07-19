@@ -79,7 +79,7 @@ optional.add_argument(
     help=("source of the data based on providers specified "
           "in the configuration file"),
     nargs="?",
-    default="cyfronet",
+    default="marketplace_rs",
     type=str,
 )
 optional.add_argument(

@@ -777,7 +777,7 @@ def top5_categories_recommended(object, k=5, anonymous=False):
         #  (iv) percentage of the (iii) to the total number of recommendations
         #       expressed in %, with or without anonymous,
         #       based on the function's flag
-    Category's info is being retrieved from the Cyfronet MongoDB source
+    Category's info is being retrieved from the marketplace_rs MongoDB source
     """
     # keep recommendations with or without anonymous suggestions
     # based on anonymous flag (default=False, i.e. ignore anonymous)
@@ -866,7 +866,7 @@ def top5_categories_ordered(object, k=5, anonymous=False):
         #  (iv) percentage of the (iii) to the total number of orders
         #       expressed in %, with or without anonymous,
         #       based on the function's flag
-    Category's info is being retrieved from the Cyfronet MongoDB source
+    Category's info is being retrieved from the marketplace_rs MongoDB source
     """
     # keep user actions with or without anonymous suggestions
     # based on anonymous flag (default=False, i.e. ignore anonymous)
@@ -963,7 +963,8 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     #  (iv) percentage of the (iii) to the total number of recommendations
     #       expressed in %, with or without anonymous,
     #       based on the function's flag
-    Scientif. domain's info is being retrieved from the Cyfronet MongoDB source
+    Scientif. domain's info is being retrieved from the marketplace_rs
+    MongoDB source
     """
     # keep recommendations with or without anonymous suggestions
     # based on anonymous flag (default=False, i.e. ignore anonymous)
@@ -1055,7 +1056,7 @@ def top5_scientific_domains_ordered(object, k=5, anonymous=False):
         #  (iv) percentage of the (iii) to the total number of orders
         #       expressed in %, with or without anonymous,
         #       based on the function's flag
-    Sc. domain's info is being retrieved from the Cyfronet MongoDB source
+    Sc. domain's info is being retrieved from the marketplace_rs MongoDB source
     """
     # keep user actions with or without anonymous suggestions
     # based on anonymous flag (default=False, i.e. ignore anonymous)

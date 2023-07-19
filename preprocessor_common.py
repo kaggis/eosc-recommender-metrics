@@ -81,7 +81,7 @@ optional.add_argument(
     help=("source of the data based on providers specified "
           "in the configuration file"),
     nargs="?",
-    default="cyfronet",
+    default="marketplace_rs",
     type=str,
 )
 optional.add_argument(
@@ -237,7 +237,7 @@ for s in _ss:
             "category": remote_resources.setdefault(int(s.strip()),
                                                     (None, None))[1],
             "type": "service",  # currently, static
-            "provider": ["cyfronet", "athena"],  # currently, static
+            "provider": ["marketplace_rs", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static
         })
     except Exception as e:
@@ -245,7 +245,7 @@ for s in _ss:
 
 rsmetrics_db["resources"].delete_many(
     {
-        "provider": {"$in": ["cyfronet", "athena"]},
+        "provider": {"$in": ["marketplace_rs", "athena"]},
         "ingestion": "batch",
     }
 )
@@ -337,7 +337,7 @@ for ua in recdb[col].find(query).sort("user"):
             "source_path": source_path,
             "target_path": target_path,
             "type": "service",  # currently, static
-            "provider": ["cyfronet", "athena"],  # currently, static
+            "provider": ["marketplace_rs", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static
         }
     )
