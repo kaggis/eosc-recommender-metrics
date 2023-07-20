@@ -189,8 +189,8 @@ if args.endtime is not None:
 
 # merge dictionaries to create two seperate match queries (one for user
 # actions and one for rec)
-match_ua = {**match_query, "provider": {"$in": [args.provider]}}
-match_rs = {**match_query, "provider": args.provider, "type": "service"}
+match_ua = {**match_query}
+match_rs = {**match_query, "provider": args.provider}
 
 # first column (_id) ignored, where iloc is used
 # pymongoarrow lib provides efficient and direct load of query results into
@@ -201,6 +201,11 @@ run.user_actions_all = find_pandas_all(
     rsmetrics_db["user_actions"], match_ua
 ).iloc[:, 1:]
 
+for _col_id in ['aai_uid', 'user_id', 'source_resource_id',
+                'target_resource_id']:
+    if _col_id not in run.user_actions_all.columns:
+        # Create a new column with None values
+        run.user_actions_all[_col_id] = None
 
 logging.info("Reading recommendations...")
 if args.provider == "athena":
@@ -235,6 +240,11 @@ else:
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
 
+for _col_id in ['aai_uid', 'user_id']:
+    if _col_id not in run.recommendations.columns:
+        # Create a new column with None values
+        run.recommendations[_col_id] = None
+
 logging.info("Reading items...")
 run.items = pd.DataFrame(
     list(rsmetrics_db["resources"].find({
@@ -248,17 +258,10 @@ run.items = pd.DataFrame(
         {"_id": 0}))
 )
 
-logging.info("Reading categories...")
-run.categories = pd.DataFrame(
-                              list(rsmetrics_db["category"].find({},
-                                   {"_id": 0}))
-)
-
-logging.info("Reading scientific domains...")
-run.scientific_domains = pd.DataFrame(
-                              list(rsmetrics_db["scientific_domain"].find({},
-                                   {"_id": 0}))
-)
+for _col_id in ['category', 'scientific_domain']:
+    if _col_id not in run.items.columns:
+        # Create a new column with None values
+        run.items[_col_id] = None
 
 # The users dataframe is the users found in the user actions
 # that have been matched based on the query filters
@@ -282,13 +285,31 @@ run.users = pd.DataFrame(list(rsmetrics_db["user_actions"].aggregate(
                     {"$filter": {
                         "input": {"$setUnion": ["$source_ids", "$target_ids"]},
                         "as": "resource_id",
-                        "cond": {"$ne": ["$$resource_id", -1]}
+                        "cond": {
+                            "$and": [
+                                {"$ne": ["$$resource_id", -1]},
+                                {"$ne": ["$$resource_id", None]}
+                            ]
+                        }
                      }}, []]
                 }
             }}
         ])))
 
 run.users = run.users.rename(columns={'_id': 'id'})
+
+if args.legacy:
+    logging.info("Reading categories...")
+    run.categories = pd.DataFrame(
+                              list(rsmetrics_db["category"].find({},
+                                   {"_id": 0}))
+    )
+
+    logging.info("Reading scientific domains...")
+    run.scientific_domains = pd.DataFrame(
+                              list(rsmetrics_db["scientific_domain"].find({},
+                                   {"_id": 0}))
+    )
 
 # Filtering collections
 try:
@@ -301,24 +322,20 @@ try:
     )
 
     # remove user actions when item does not exist in items' catalog
-    # not-known items (i.e. -1) are not excluded
+    # not-known items (i.e. -1 or None) are not excluded
     # (there is no need to do this for users, since users are already
     # built upon user actions)
     # also a source_resource_id or target_resource_id will always be
-    # an integer (-1 indicates not known)
+    # an string (However, [int] -1 or None indicates not known)
     run.user_actions = run.user_actions_all[
         (run.user_actions_all["source_resource_id"]
-         .isin(run.items["id"].tolist() + [-1]))
-    ]
-    run.user_actions = run.user_actions[
-        (run.user_actions["target_resource_id"]
-         .isin(run.items["id"].tolist() + [-1]))
+         .isin(run.items["id"].tolist() + [-1, None]))
     ]
 
-    # converts resource_id from string to integer
-    # this is not necessary in resource_ids in user actions or items
-    run.recommendations['resource_id'] = \
-        run.recommendations['resource_id'].astype(int)
+    run.user_actions = run.user_actions[
+        (run.user_actions["target_resource_id"]
+         .isin(run.items["id"].tolist() + [-1, None]))
+    ]
 
     run.recommendations["timestamp"] = (
         pd.to_datetime(run.recommendations["timestamp"])
@@ -347,7 +364,7 @@ except Exception as e:
     pass
 
 data_errors = []
-if len(run.user_actions_all) == 0:
+if len(run.user_actions) == 0:
     data_errors.append("No user actions found")
 
 if len(run.recommendations) == 0:
@@ -358,12 +375,6 @@ if len(run.items) == 0:
 
 if len(run.users) == 0:
     data_errors.append("No users found")
-
-if len(run.categories) == 0:
-    data_errors.append("No categories found")
-
-if len(run.scientific_domains) == 0:
-    data_errors.append("No scientific domains found")
 
 if data_errors:
     for data_error in data_errors:
@@ -409,7 +420,6 @@ for func_name in func_names:
 # Add the two lists to the final output onject
 output["metrics"] = metrics
 output["statistics"] = statistics
-output["type"] = "service"
 output["provider"] = args.provider
 output["schema"] = run.schema
 output["name"] = args.provider + " - " + run.schema
