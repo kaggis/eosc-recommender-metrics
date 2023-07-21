@@ -272,7 +272,7 @@ def main(args):
                 "resource_ids": message["recommendations"],
                 "type": rec_map[message["panel_id"]],
                 "ingestion": "stream",
-                "provider": message["recommender_systems"][0],
+                "provider": message["recommender_systems"][0].lower(),
             }
 
             rsmetrics_db["recommendations"].insert_one(record)

@@ -6,10 +6,12 @@ providers:
      db: "mongodb://localhost:27017/recommender_dev"
    - name: athena
      db: "mongodb://localhost:27017/athena_dev"
+   - name: online_engine
+     db: ""
 
 # The database where the Preprocessor's
 # and RSmetrics data are stored
-datastore: "mongodb://localhost:27017/rsmetrics"
+datastore: "mongodb://localhost:27017/rsmetrics2"
 
 service:
     # Use the EOSC-Marketplace webpage
