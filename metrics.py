@@ -37,10 +37,25 @@ def statistic(txt):
     return wrapper
 
 
+# decorator to continue the procedure
+# after fatal error in statistic/metric calculation
+def pass_on_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            print('Error occurred in: {}. "{}"'.format(func.__name__, str(e)))
+            return None
+        return result
+
+    return wrapper
+
+
 # Metrics
 
 
 @statistic("The initial date where metrics are calculated on")
+@pass_on_error
 def start(object):
     """
     Calculate the start date where metrics are calculated on
@@ -56,6 +71,7 @@ def start(object):
 
 
 @statistic("The final date where metrics are calculated on")
+@pass_on_error
 def end(object):
     """
     Calculate the end date where metrics are calculated on
@@ -71,6 +87,7 @@ def end(object):
 
 
 @statistic("The total number of unique registered users in the system")
+@pass_on_error
 def users(object):
     """
     Calculate the total number of unique users
@@ -81,6 +98,7 @@ def users(object):
 
 
 @statistic("The total number of unique published items in the system")
+@pass_on_error
 def items(object):
     """
     Calculate the total number of unique items
@@ -91,6 +109,7 @@ def items(object):
 
 
 @statistic("The total number of recommended items")
+@pass_on_error
 def recommended_items(object):
     """
     Calculate the total number of recommended items
@@ -100,6 +119,7 @@ def recommended_items(object):
 
 
 @statistic("The total number of recommended items towards registered users")
+@pass_on_error
 def recommended_items_to_registered_users(object):
     """
     Calculate the total number of recommendations for registered users
@@ -110,6 +130,7 @@ def recommended_items_to_registered_users(object):
 
 
 @statistic("The total number of recommended items towards anonymous users")
+@pass_on_error
 def recommended_items_to_anonymous_users(object):
     """
     Calculate the total number of recommendations for anonymous users
@@ -123,6 +144,7 @@ def recommended_items_to_anonymous_users(object):
     "The percentage (%) of recommended items towards registered users to "
     "the total recommended items"
 )
+@pass_on_error
 def recommended_items_to_registered_users_perc(object):
     """
     Calculate the percentage (%) of recommendations occurred
@@ -141,6 +163,7 @@ def recommended_items_to_registered_users_perc(object):
     "The percentage (%) of recommended items towards anonymous users to the "
     "total recommended items"
 )
+@pass_on_error
 def recommended_items_to_anonymous_users_perc(object):
     """
     Calculate the percentage (%) of recommendations occurred
@@ -151,6 +174,7 @@ def recommended_items_to_anonymous_users_perc(object):
 
 
 @statistic("The total number of user actions")
+@pass_on_error
 def user_actions(object):
     """
     Calculate the total number of user_actions
@@ -160,6 +184,7 @@ def user_actions(object):
 
 
 @statistic("The total number of user actions occurred by registered users")
+@pass_on_error
 def user_actions_registered(object):
     """
     Calculate the total number of user_actions occurred by registered users
@@ -170,6 +195,7 @@ def user_actions_registered(object):
 
 
 @statistic("The total number of user actions occurred by anonymous users")
+@pass_on_error
 def user_actions_anonymous(object):
     """
     Calculate the total number of user_actions occurred by anonymous users
@@ -182,6 +208,7 @@ def user_actions_anonymous(object):
     "The percentage (%) of user actions occurred by registered users to the "
     "total user actions"
 )
+@pass_on_error
 def user_actions_registered_perc(object):
     """
     Calculate the percentage (%) of user actions occurred
@@ -196,6 +223,7 @@ def user_actions_registered_perc(object):
     "The percentage (%) of user actions occurred by anonymous users to the "
     "total user actions"
 )
+@pass_on_error
 def user_actions_anonymous_perc(object):
     """
     Calculate the percentage (%) of user actions occurred
@@ -206,6 +234,7 @@ def user_actions_anonymous_perc(object):
 
 
 @statistic("The total number of user actions led to order")
+@pass_on_error
 def user_actions_order(object):
     """
     Calculate the total number of user_actions led to order
@@ -215,6 +244,7 @@ def user_actions_order(object):
 
 
 @statistic("The total number of user actions led to order by registered users")
+@pass_on_error
 def user_actions_order_registered(object):
     """
     Calculate the total number of user_actions led to order by registered users
@@ -230,6 +260,7 @@ def user_actions_order_registered(object):
 
 
 @statistic("The total number of user actions led to order by anonymous users")
+@pass_on_error
 def user_actions_order_anonymous(object):
     """
     Calculate the total number of user_actions led to order by anonymous users
@@ -242,6 +273,7 @@ def user_actions_order_anonymous(object):
     "The percentage (%) of user actions occurred by registered users and led "
     "to order to the total user actions that led to order"
 )
+@pass_on_error
 def user_actions_order_registered_perc(object):
     """
     Calculate the percentage (%) of user actions occurred
@@ -259,6 +291,7 @@ def user_actions_order_registered_perc(object):
     "The percentage (%) of user actions occurred by anonymous users and led "
     "to order to the total user actions that led to order"
 )
+@pass_on_error
 def user_actions_order_anonymous_perc(object):
     """
     Calculate the percentage (%) of user actions occurred
@@ -270,6 +303,7 @@ def user_actions_order_anonymous_perc(object):
 
 @statistic("The total number of user actions assosicated with the "
            "recommendation panel")
+@pass_on_error
 def user_actions_panel(object):
     """
     Calculate the total number of user_actions assosicated with
@@ -286,6 +320,7 @@ def user_actions_panel(object):
     "The percentage (%) of user actions assosicated with the recommendation "
     "panel to the total user actions"
 )
+@pass_on_error
 def user_actions_panel_perc(object):
     """
     Calculate the percentage (%) of user actions assosicated with
@@ -296,6 +331,7 @@ def user_actions_panel_perc(object):
 
 
 @statistic("The total number of unique recommended items")
+@pass_on_error
 def total_unique_recommended_items(object):
     """
     Calculate the total number of unique items found in recommendations
@@ -304,6 +340,7 @@ def total_unique_recommended_items(object):
 
 
 @statistic("The total number of unique users found in recommendations")
+@pass_on_error
 def total_unique_users_recommended(object):
     """
     Calculate the total number of unique users found in recommendations
@@ -312,6 +349,7 @@ def total_unique_users_recommended(object):
 
 
 @statistic("A dictionary of the number of user actions per day")
+@pass_on_error
 def user_actions_per_day(object):
     """
     It returns a statistical report in dictionary format. Specifically, the key
@@ -372,6 +410,7 @@ def user_actions_per_day(object):
 
 
 @statistic("A dictionary of the number of user actions per month")
+@pass_on_error
 def user_actions_per_month(object):
     """
     It returns a statistical report in dictionary format. Specifically, the key
@@ -438,6 +477,7 @@ def user_actions_per_month(object):
 
 
 @statistic("A dictionary of the number of recommended items per day")
+@pass_on_error
 def recommended_items_per_day(object):
     """
     It returns a a timeseries of recommended item counts per day.
@@ -490,6 +530,7 @@ def recommended_items_per_day(object):
 
 
 @statistic("A dictionary of the number of recommended items per month")
+@pass_on_error
 def recommended_items_per_month(object):
     """
     It returns a a timeseries of recommended item counts per month.
@@ -549,6 +590,7 @@ def recommended_items_per_month(object):
 
 @metric("The percentage (%) of unique items  to the total number "
         "of items")
+@pass_on_error
 def catalog_coverage(object):
     """
     Calculate the percentage (%) of unique items
@@ -559,6 +601,7 @@ def catalog_coverage(object):
 
 
 @metric("The percentage (%) of unique users to the total number of users")
+@pass_on_error
 def user_coverage(object):
     """
     Calculate the percentage (%) of unique users  to the total number of users
@@ -572,6 +615,7 @@ def user_coverage(object):
     "(user hit: a user that has accessed at least one item "
     "that is also a personal recommendation)"
 )
+@pass_on_error
 def hit_rate(object):
     """
     1) For each user get the recommended items and the items the user
@@ -615,6 +659,7 @@ def hit_rate(object):
     "total times recommendation panels were presented to users. "
     "Takes into account all historical data of user actions"
 )
+@pass_on_error
 def click_through_rate(object):
     """
     Get only the user actions that present a recommendation panel to the user
@@ -667,6 +712,7 @@ def click_through_rate(object):
     "The entropy is 0 when a single item is always chosen or recommended, "
     "and log n when n items are chosen or recommended equally often."
 )
+@pass_on_error
 def diversity(object, anonymous=False):
     """
     Calculate Shannon Entropy. The entropy is 0 when a single item is always
@@ -727,6 +773,7 @@ def diversity(object, anonymous=False):
     "The index is 0 when all items are "
     "chosen equally often, and 1 when a single item is always chosen."
 )
+@pass_on_error
 def diversity_gini(object, anonymous=False):
     """
     Calculate GiniIndex based on
@@ -784,6 +831,7 @@ def diversity_gini(object, anonymous=False):
 
 @metric("The novelty expresses how often new and unseen items are"
         " recommended to users")
+@pass_on_error
 def novelty(object):
     """Calculate novelty of recommendations
     using the n=SUM(-log(p(i)))/|R| formula"""
@@ -841,6 +889,7 @@ def novelty(object):
     "fraction of the number of the correct predictions by the total number "
     "of predictions"
 )
+@pass_on_error
 def accuracy(object):
     """
     Calculate the accuracy score found for each and retrieve the mean value.
@@ -916,6 +965,7 @@ def accuracy(object):
 
 
 @metric("The Top 5 recommended items according to recommendations entries")
+@pass_on_error
 def top5_items_recommended(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -996,6 +1046,7 @@ def top5_items_recommended(
 
 
 @metric("The Top 5 ordered items according to user actions entries")
+@pass_on_error
 def top5_items_ordered(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -1079,6 +1130,7 @@ def top5_items_ordered(
     return topk_items
 
 
+# internal function
 def __top5_recommended(object, k=5, element='category', anonymous=False):
     """
     Calculate the Top 5 recommended elements according to
@@ -1176,6 +1228,7 @@ def __top5_recommended(object, k=5, element='category', anonymous=False):
     return topk_elements
 
 
+# internal function
 def __top5_ordered(object, element='category', k=5, anonymous=False):
     """
     Calculate the Top 5 ordered elements according to user actions entries.
@@ -1282,12 +1335,14 @@ def __top5_ordered(object, element='category', k=5, anonymous=False):
 
 @metric("The Top 5 recommended categories according to recommendations entries"
         )
+@pass_on_error
 def top5_categories_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 recommended scientific domains according to recommendations\
 entries")
+@pass_on_error
 def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='scientific_domain',
                               anonymous=False)
@@ -1295,12 +1350,14 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
 
 @metric("The Top 5 ordered categories according to recommendations entries"
         )
+@pass_on_error
 def top5_categories_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 ordered scientific domains according to recommendations\
 entries")
+@pass_on_error
 def top5_scientific_domains_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='scientific_domain',
                           anonymous=False)
