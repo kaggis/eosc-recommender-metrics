@@ -345,7 +345,7 @@ try:
     # items' catalogs
     # anonymous users (i.e. -1 or None in legacy or current mode respectively)
     # are not excluded
-    # not-known items (i.e. -1) are not excluded
+    # not-known items (i.e. -1 or None) are not excluded
     # (having both -1 and None cover both schemas -current or legacy-)
     # meanwhile, current schema can not have -1 while legacy None,
     # so there is no issue to filter both entries concurrently
@@ -354,9 +354,11 @@ try:
                                                [-1, None])
     ]
 
+    # we have added None which is the new state of unkown resources
+    # and -1 for backward compatibility
     run.recommendations = run.recommendations[
         (run.recommendations["resource_id"]
-         .isin(run.items["id"].tolist() + [-1]))
+         .isin(run.items["id"].tolist() + [-1, None]))
     ]
 
 except Exception as e:
