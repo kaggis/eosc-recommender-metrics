@@ -207,6 +207,19 @@ for _col_id in ['aai_uid', 'user_id', 'source_resource_id',
         # Create a new column with None values
         run.user_actions_all[_col_id] = None
 
+# if aai_uid is null then anonymous.
+# If anonymous copy the unique_id to aai_uid.
+# Thus, all entries have aai_uid (both registered and anonymous)
+if not args.legacy:
+    run.user_actions_all['registered'] = run.user_actions_all.apply(
+                                         lambda row:
+                                         False if pd.isnull(row['aai_uid'])
+                                         else True, axis=1)
+    run.user_actions_all['aai_uid'] = run.user_actions_all.apply(
+                                      lambda row:
+                                      row['unique_id'] if not row['registered']
+                                      else row['aai_uid'], axis=1)
+
 logging.info("Reading recommendations...")
 if args.provider == "athena":
     # aggregate_pandas_all directly returns a pandas dataframe
@@ -245,6 +258,19 @@ for _col_id in ['aai_uid', 'user_id']:
         # Create a new column with None values
         run.recommendations[_col_id] = None
 
+# if aai_uid is null then anonymous.
+# If anonymous copy the unique_id to aai_uid.
+# Thus, all entries have aai_uid (both registered and anonymous)
+if not args.legacy:
+    run.recommendations['registered'] = run.recommendations.apply(
+                                        lambda row: False if
+                                        pd.isnull(row['aai_uid'])
+                                        else True, axis=1)
+    run.recommendations['aai_uid'] = run.recommendations.apply(
+                                        lambda row: row['unique_id']
+                                        if not row['registered']
+                                        else row['aai_uid'], axis=1)
+
 logging.info("Reading items...")
 run.items = pd.DataFrame(
     list(rsmetrics_db["resources"].find({
@@ -257,6 +283,7 @@ run.items = pd.DataFrame(
         ]},
         {"_id": 0}))
 )
+run.items['id'] = run.items['id'].astype(str)
 
 for _col_id in ['category', 'scientific_domain']:
     if _col_id not in run.items.columns:
@@ -271,11 +298,15 @@ for _col_id in ['category', 'scientific_domain']:
 logging.info("Reading users...")
 
 # aggregate_pandas_all directly returns a pandas dataframe
+
+# get both registered and anonynmous
+users_ids = {"$ifNull": ["$aai_uid", "$unique_id"]}
+
 run.users = pd.DataFrame(list(rsmetrics_db["user_actions"].aggregate(
     [
         {"$match":  match_ua},
         {"$group": {
-            "_id": '$'+run.id_field,
+            "_id": '$'+run.id_field if args.legacy else users_ids,
             "source_ids": {"$addToSet": "$source_resource_id"},
             "target_ids": {"$addToSet": "$target_resource_id"}
          }},
@@ -357,8 +388,8 @@ try:
     # we have added None which is the new state of unkown resources
     # and -1 for backward compatibility
     run.recommendations = run.recommendations[
-        (run.recommendations["resource_id"]
-         .isin(run.items["id"].tolist() + [-1, None]))
+        run.recommendations["resource_id"]
+        .isin(run.items["id"].tolist() + [-1, None])
     ]
 
 except Exception as e:

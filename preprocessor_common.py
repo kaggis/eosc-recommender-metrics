@@ -209,9 +209,11 @@ for col in ['scientific_domain', 'category']:
     )
 
     rsmetrics_db[col].drop()
-    rsmetrics_db[col].insert_many(data)
-
-    logging.info("{} collection stored...".format(col))
+    try:
+        rsmetrics_db[col].insert_many(data)
+        logging.info("{} collection stored...".format(col))
+    except Exception:
+        pass
 
 # B. Working on resources
 
