@@ -97,6 +97,29 @@ def users(object):
     return int(object.users["id"].nunique())
 
 
+@statistic("The total number of unique registered users in the system")
+@pass_on_error
+def registered_users(object):
+    """
+    Calculate the total number of unique users
+    found in Pandas DataFrame object users (if provided)
+    or user_actions otherwise
+    """
+    return object.user_actions[object.user_actions["registered"]][
+                                                   'aai_uid'].nunique()
+
+
+@statistic("The total number of unique anonymous users in the system")
+@pass_on_error
+def anonymous_users(object):
+    """
+    Calculate the total number of unique users
+    found in Pandas DataFrame object users (if provided)
+    or user_actions otherwise
+    """
+    return users(object)-registered_users(object)
+
+
 @statistic("The total number of unique published items in the system")
 @pass_on_error
 def items(object):
@@ -118,61 +141,6 @@ def recommended_items(object):
     return len(object.recommendations.index)
 
 
-@statistic("The total number of recommended items towards registered users")
-@pass_on_error
-def recommended_items_to_registered_users(object):
-    """
-    Calculate the total number of recommendations for registered users
-    found in Pandas DataFrame object recommendations
-    """
-    return len(object.recommendations[object.recommendations[object.id_field]
-               .find_registered(object.schema)].index)
-
-
-@statistic("The total number of recommended items towards anonymous users")
-@pass_on_error
-def recommended_items_to_anonymous_users(object):
-    """
-    Calculate the total number of recommendations for anonymous users
-    found in Pandas DataFrame object recommendations
-    """
-    return (recommended_items(object) -
-            recommended_items_to_registered_users(object))
-
-
-@statistic(
-    "The percentage (%) of recommended items towards registered users to "
-    "the total recommended items"
-)
-@pass_on_error
-def recommended_items_to_registered_users_perc(object):
-    """
-    Calculate the percentage (%) of recommendations occurred
-    by registered users to the total recommendations
-    found in Pandas DataFrame object recommendations (in two decimals)
-    """
-    return round(
-        recommended_items_to_registered_users(object)
-        * 100.0
-        / recommended_items(object),
-        2,
-    )
-
-
-@statistic(
-    "The percentage (%) of recommended items towards anonymous users to the "
-    "total recommended items"
-)
-@pass_on_error
-def recommended_items_to_anonymous_users_perc(object):
-    """
-    Calculate the percentage (%) of recommendations occurred
-    by anonymous users to the total recommendations
-    found in Pandas DataFrame object recommendations (in two decimals)
-    """
-    return round(100.0 - recommended_items_to_registered_users_perc(object), 2)
-
-
 @statistic("The total number of user actions")
 @pass_on_error
 def user_actions(object):
@@ -190,8 +158,7 @@ def user_actions_registered(object):
     Calculate the total number of user_actions occurred by registered users
     found in Pandas DataFrame object user_actions
     """
-    return len(object.user_actions[object.user_actions[object.id_field]
-               .find_registered(object.schema)].index)
+    return len(object.user_actions[object.user_actions["registered"]].index)
 
 
 @statistic("The total number of user actions occurred by anonymous users")
@@ -233,101 +200,90 @@ def user_actions_anonymous_perc(object):
     return round(100.0 - user_actions_registered_perc(object), 2)
 
 
-@statistic("The total number of user actions led to order")
+@statistic("The total number of item views by the users")
 @pass_on_error
-def user_actions_order(object):
+def item_views(object):
     """
-    Calculate the total number of user_actions led to order
+    Calculate the total number of user_actions led to item views
     found in Pandas DataFrame object user_actions
     """
-    return len(object.user_actions[object.user_actions["reward"] == 1.0].index)
+    # if target path is the search page remove it
+    # if the main page of the source and target paths are the same
+    # then remove it because it's a walk around the service
+    # items apart from services have not walk around implementations
+    pattern = r"search%2F(?:all|dataset|software|service" + \
+              r"|data-source|training|guideline|other)"
+
+    _df = object.user_actions
+    _df = _df[~_df["target_path"].str.match(pattern)]
+    _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
+    _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
+
+    filtered_uas = _df[_df['source'] != _df['target']]
+
+    return len(filtered_uas.index)
 
 
-@statistic("The total number of user actions led to order by registered users")
+@statistic("The total number of item views by the registered users")
 @pass_on_error
-def user_actions_order_registered(object):
+def item_views_registered(object):
     """
-    Calculate the total number of user_actions led to order by registered users
-    found in Pandas DataFrame object user_actions
+    Calculate the total number of user_actions led by registered users
+    led to item views found in Pandas DataFrame object user_actions
     """
-    return len(
-        object.user_actions[
-            (object.user_actions["reward"] == 1.0) &
-            (object.user_actions[object.id_field]
-                .find_registered(object.schema))
-        ].index
-    )
+    # if target path is the search page remove it
+    # if the main page of the source and target paths are the same
+    # then remove it because it's a walk around the service
+    # items apart from services have not walk around implementations
+    pattern = r"search%2F(?:all|dataset|software|service" + \
+              r"|data-source|training|guideline|other)"
+
+    _df = object.user_actions
+    _df = _df[~_df["target_path"].str.match(pattern)]
+    _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
+    _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
+
+    filtered_uas = _df[_df['source'] != _df['target']]
+
+    return len(filtered_uas[filtered_uas["registered"]].index)
 
 
-@statistic("The total number of user actions led to order by anonymous users")
+@statistic("The total number of item views by the anonymous users")
 @pass_on_error
-def user_actions_order_anonymous(object):
+def item_views_anonymous(object):
     """
-    Calculate the total number of user_actions led to order by anonymous users
-    found in Pandas DataFrame object user_actions
+    Calculate the total number of user_actions led by anonymous users
+    led to item views found in Pandas DataFrame object user_actions
     """
-    return user_actions_order(object) - user_actions_order_registered(object)
+    return item_views(object) - item_views_registered(object)
 
 
 @statistic(
-    "The percentage (%) of user actions occurred by registered users and led "
-    "to order to the total user actions that led to order"
+    "The percentage (%) of user_actions led by registered users to item views"
 )
 @pass_on_error
-def user_actions_order_registered_perc(object):
+def item_views_registered_perc(object):
     """
-    Calculate the percentage (%) of user actions occurred
-    by registered users and led to order to the total user actions that led to
-    order found in Pandas DataFrame object user_actions (in two decimals)
+    Calculate the percentage (%) of user_actions led by registered users to
+    item views found in Pandas DataFrame object user_actions (in two decimals)
     """
     try:
-        return round((user_actions_order_registered(object) * 100.0 /
-                      user_actions_order(object)), 2)
+        return round((item_views_registered(object) * 100.0 /
+                      item_views(object)), 2)
     except ZeroDivisionError:
         return 0
 
 
 @statistic(
-    "The percentage (%) of user actions occurred by anonymous users and led "
-    "to order to the total user actions that led to order"
+    "The percentage (%) of user_actions led by anonymous users to item views"
 )
 @pass_on_error
-def user_actions_order_anonymous_perc(object):
+def item_views_anonymous_perc(object):
     """
-    Calculate the percentage (%) of user actions occurred
-    by anonymous users and led to order to the total user actions that led
-    to order found in Pandas DataFrame object user_actions (in two decimals)
+    Calculate the percentage (%) of user_actions led by anonymous users to
+    item views found in Pandas DataFrame object user_actions (in two decimals)
     """
-    return round(100.0 - user_actions_order_registered_perc(object), 2)
-
-
-@statistic("The total number of user actions assosicated with the "
-           "recommendation panel")
-@pass_on_error
-def user_actions_panel(object):
-    """
-    Calculate the total number of user_actions assosicated with
-    the recommendation panel found in Pandas DataFrame object user_actions
-    """
-    return len(
-        object.user_actions[
-            object.user_actions["panel"] == "recommendation_panel"
-        ].index
-    )
-
-
-@statistic(
-    "The percentage (%) of user actions assosicated with the recommendation "
-    "panel to the total user actions"
-)
-@pass_on_error
-def user_actions_panel_perc(object):
-    """
-    Calculate the percentage (%) of user actions assosicated with
-    the recommendation panel to the total user actions
-    found in Pandas DataFrame object user_actions (in two decimals)
-    """
-    return round(user_actions_panel(object) * 100.0 / user_actions(object), 2)
+    return round(100.0 - item_views_registered_perc(object), 2)
 
 
 @statistic("The total number of unique recommended items")

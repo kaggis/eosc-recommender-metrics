@@ -132,7 +132,8 @@ def html_metrics(report_name):
 
     result = {}
     stats_needed = [
-        "users",
+        "registered_users",
+        "anonymous_users",
         "recommended_items",
         "items",
         "user_actions",
@@ -140,11 +141,11 @@ def html_metrics(report_name):
         "user_actions_registered_perc",
         "user_actions_anonymous",
         "user_actions_anonymous_perc",
-        "user_actions_order",
-        "user_actions_order_registered",
-        "user_actions_order_registered_perc",
-        "user_actions_order_anonymous",
-        "user_actions_order_anonymous_perc",
+        "item_views",
+        "item_views_registered",
+        "item_views_registered_perc",
+        "item_views_anonymous",
+        "item_views_anonymous_perc",
         "start",
         "end",
     ]
