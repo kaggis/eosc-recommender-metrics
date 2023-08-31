@@ -220,6 +220,20 @@ if not args.legacy:
                                       row['unique_id'] if not row['registered']
                                       else row['aai_uid'], axis=1)
 
+# Same logic but for legacy mode:
+# if user_id == -1 then anonymous.
+# If anonymous copy 0 to user_id.
+# Thus, all entries have user_id >= 0 (both registered and anonymous)
+else:
+    run.user_actions_all['registered'] = run.user_actions_all.apply(
+                                         lambda row:
+                                         False if row['user_id'] == -1
+                                         else True, axis=1)
+    run.user_actions_all['user_id'] = run.user_actions_all.apply(
+                                      lambda row:
+                                      0 if not row['registered']
+                                      else row['user_id'], axis=1)
+
 logging.info("Reading recommendations...")
 if args.provider == "athena":
     # aggregate_pandas_all directly returns a pandas dataframe
@@ -270,6 +284,19 @@ if not args.legacy:
                                         lambda row: row['unique_id']
                                         if not row['registered']
                                         else row['aai_uid'], axis=1)
+# Same logic but for legacy mode:
+# if user_id == -1 then anonymous.
+# If anonymous copy 0 to user_id.
+# Thus, all entries have user_id >= 0 (both registered and anonymous)
+else:
+    run.recommendations['registered'] = run.recommendations.apply(
+                                        lambda row: False if
+                                        row['aai_uid'] == -1
+                                        else True, axis=1)
+    run.recommendations['user_id'] = run.recommendations.apply(
+                                        lambda row: 0
+                                        if not row['registered']
+                                        else row['user_id'], axis=1)
 
 logging.info("Reading items...")
 run.items = pd.DataFrame(
@@ -283,7 +310,9 @@ run.items = pd.DataFrame(
         ]},
         {"_id": 0}))
 )
-run.items['id'] = run.items['id'].astype(str)
+
+if not args.legacy:
+    run.items['id'] = run.items['id'].astype(str)
 
 for _col_id in ['category', 'scientific_domain']:
     if _col_id not in run.items.columns:

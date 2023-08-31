@@ -29,5 +29,5 @@ process:
 
 # This is optional for visual stylization of the metric when displayed on the report
 style:
-    icon: pe-7s-look
-    color: bg-malibu-beach
+    icon: pe-7s-star
+    color: bg-mean-fruit

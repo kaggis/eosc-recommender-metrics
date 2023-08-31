@@ -51,6 +51,19 @@ def pass_on_error(func):
     return wrapper
 
 
+# decorator to continue the procedure
+# after fatal error in statistic/metric calculation
+def pass_top5_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            print('Error occurred in: {}. "{}"'.format(func.__name__, str(e)))
+            return []
+        return result
+
+    return wrapper
+
 # Metrics
 
 
@@ -106,7 +119,7 @@ def registered_users(object):
     or user_actions otherwise
     """
     return object.user_actions[object.user_actions["registered"]][
-                                                   'aai_uid'].nunique()
+                                                   object.id_field].nunique()
 
 
 @statistic("The total number of unique anonymous users in the system")
@@ -211,17 +224,24 @@ def item_views(object):
     # if the main page of the source and target paths are the same
     # then remove it because it's a walk around the service
     # items apart from services have not walk around implementations
-    pattern = r"search%2F(?:all|dataset|software|service" + \
-              r"|data-source|training|guideline|other)"
-
     _df = object.user_actions
-    _df = _df[~_df["target_path"].str.match(pattern)]
+
+    if object.schema == 'legacy':
+        pattern = r"/services/([^/]+)/"
+        _df = _df[_df["target_path"].str.match(pattern) &
+                  ~_df["target_path"].str.startswith("/services/c/")]
+
+    else:
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  r"|data-source|training|guideline|other)"
+        _df = _df[~_df["target_path"].str.match(pattern)]
+
     _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
     _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
 
-    filtered_uas = _df[_df['source'] != _df['target']]
+    _df = _df[_df['source'] != _df['target']]
 
-    return len(filtered_uas.index)
+    return len(_df.index)
 
 
 @statistic("The total number of item views by the registered users")
@@ -921,7 +941,7 @@ def accuracy(object):
 
 
 @metric("The Top 5 recommended items according to recommendations entries")
-@pass_on_error
+@pass_top5_error
 def top5_items_recommended(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -1002,7 +1022,7 @@ def top5_items_recommended(
 
 
 @metric("The Top 5 ordered items according to user actions entries")
-@pass_on_error
+@pass_top5_error
 def top5_items_ordered(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -1291,14 +1311,14 @@ def __top5_ordered(object, element='category', k=5, anonymous=False):
 
 @metric("The Top 5 recommended categories according to recommendations entries"
         )
-@pass_on_error
+@pass_top5_error
 def top5_categories_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 recommended scientific domains according to recommendations\
 entries")
-@pass_on_error
+@pass_top5_error
 def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='scientific_domain',
                               anonymous=False)
@@ -1306,14 +1326,14 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
 
 @metric("The Top 5 ordered categories according to recommendations entries"
         )
-@pass_on_error
+@pass_top5_error
 def top5_categories_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 ordered scientific domains according to recommendations\
 entries")
-@pass_on_error
+@pass_top5_error
 def top5_scientific_domains_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='scientific_domain',
                           anonymous=False)
