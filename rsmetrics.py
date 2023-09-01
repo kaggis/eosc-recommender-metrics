@@ -13,6 +13,7 @@ import logging
 
 # local lib
 import metrics as m
+import get_catalog
 
 
 __copyright__ = (
@@ -104,6 +105,12 @@ optional.add_argument("--legacy", help=("enable in order to run calculation \
 based on legacy schema"), action="store_true")
 
 optional.add_argument(
+    "--use-cache",
+    help=("Enable to perform calculations without resources' retrieval"),
+    action="store_true",
+)
+
+optional.add_argument(
     "-h", "--help", action="help", help="show this help message and exit"
 )
 optional.add_argument(
@@ -123,12 +130,6 @@ if args.endtime:
     edt = datetime.fromisoformat(args.endtime)
     args.endtime = datetime.combine(edt, datetime.max.time())
 
-# if not args.starttime:
-#     args.starttime = datetime(1970, 1, 1)
-
-# if not args.endtime:
-#     args.endtime = datetime.utcnow()
-
 if args.starttime and args.endtime:
     if args.endtime < args.starttime:
         print("End date must be older than start date")
@@ -141,6 +142,31 @@ with open(args.config, "r") as _f:
 if args.provider not in [p["name"] for p in config["providers"]]:
     print("Provider must be in the configuration")
     sys.exit(0)
+
+# if no cache, retrieve resources
+# using the get_catalog tool
+if not args.use_cache:
+
+    # call get_catalog
+    class GetCatalogArgs:
+        pass
+
+    _args = GetCatalogArgs()
+    _args.output = False
+    _args.batch = 100
+    _args.limit = -1
+    _args.datastore = config["datastore"]
+    _args.url = config['service']['service_list_url']
+    _args.providers = args.provider
+
+    try:
+        for cat in config['service']['category'][_args.providers]:
+            _args.category = cat
+            get_catalog.main(_args)
+    except Exception as e:
+        print("Error: Could not retrieve {} items from {}. See: {}".format(
+            _args.category, _args.url, e))
+        raise
 
 # read data
 # connect to db server
