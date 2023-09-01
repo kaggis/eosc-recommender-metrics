@@ -224,7 +224,7 @@ def item_views(object):
     # if the main page of the source and target paths are the same
     # then remove it because it's a walk around the service
     # items apart from services have not walk around implementations
-    _df = object.user_actions
+    _df = object.user_actions.copy()
 
     if object.schema == 'legacy':
         pattern = r"/services/([^/]+)/"
@@ -255,17 +255,26 @@ def item_views_registered(object):
     # if the main page of the source and target paths are the same
     # then remove it because it's a walk around the service
     # items apart from services have not walk around implementations
-    pattern = r"search%2F(?:all|dataset|software|service" + \
-              r"|data-source|training|guideline|other)"
+    _df = object.user_actions.copy()
 
-    _df = object.user_actions
-    _df = _df[~_df["target_path"].str.match(pattern)]
+    if object.schema == 'legacy':
+        pattern = r"/services/([^/]+)/"
+        _df = _df[_df["target_path"].str.match(pattern) &
+                  ~_df["target_path"].str.startswith("/services/c/")]
+
+    else:
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  r"|data-source|training|guideline|other)"
+        _df = _df[~_df["target_path"].str.match(pattern)]
+
     _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
     _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
 
-    filtered_uas = _df[_df['source'] != _df['target']]
+    _df = _df[_df['source'] != _df['target']]
 
-    return len(filtered_uas[filtered_uas["registered"]].index)
+    _df = _df[_df['registered']]
+
+    return len(_df.index)
 
 
 @statistic("The total number of item views by the anonymous users")
@@ -1009,7 +1018,13 @@ def top5_items_recommended(
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url": base + str(_df_item["path"].item()),
+                "item_url":
+                    '{}{}'.format(
+                                  base if 'services/' in
+                                  str(_df_item["path"].item()) else
+                                  'https://search.marketplace.eosc-portal.eu/',
+                                  str(_df_item["path"].item())).replace("//",
+                                                                        "/"),
                 "recommendations": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(recs.index), 2),
@@ -1094,7 +1109,13 @@ def top5_items_ordered(
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url": base + str(_df_item["path"].item()),
+                "item_url":
+                    '{}{}'.format(
+                                  base if 'services/' in
+                                  str(_df_item["path"].item()) else
+                                  'https://search.marketplace.eosc-portal.eu/',
+                                  str(_df_item["path"].item())).replace("//",
+                                                                        "/"),
                 "orders": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(uas.index), 2),
