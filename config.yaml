@@ -23,5 +23,6 @@ service:
     # and also in metrics calculations where service is considered
     published: true
     category:
+       athena: [service]
        marketplace_rs: [service]
        online_engine: [training, data_source]

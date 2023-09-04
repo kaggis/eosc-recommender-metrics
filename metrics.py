@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import pandas as pd
 import numpy as np
+import re
 
 
 class Runtime:
@@ -1018,13 +1019,11 @@ def top5_items_recommended(
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url":
-                    '{}{}'.format(
+                "item_url": re.sub(r'(?<!https:)//', '/', '{}{}'.format(
                                   base if 'services/' in
                                   str(_df_item["path"].item()) else
                                   'https://search.marketplace.eosc-portal.eu/',
-                                  str(_df_item["path"].item())).replace("//",
-                                                                        "/"),
+                                  str(_df_item["path"].item()))),
                 "recommendations": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(recs.index), 2),
@@ -1109,13 +1108,11 @@ def top5_items_ordered(
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url":
-                    '{}{}'.format(
+                "item_url": re.sub(r'(?<!https:)//', '/', '{}{}'.format(
                                   base if 'services/' in
                                   str(_df_item["path"].item()) else
                                   'https://search.marketplace.eosc-portal.eu/',
-                                  str(_df_item["path"].item())).replace("//",
-                                                                        "/"),
+                                  str(_df_item["path"].item()))),
                 "orders": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(uas.index), 2),
