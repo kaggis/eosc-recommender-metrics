@@ -8,16 +8,12 @@ import natsort as ns
 from natsort import natsorted
 import logging
 import pandas as pd
-import os
+import re
 
 # local lib
-import reward_mapping as rm
-
-from get_service_catalog import (
-    get_eosc_marketplace_url,
-    get_service_catalog_items,
-    get_service_catalog_page_content,
-    save_service_items_to_csv,
+from get_catalog import (
+   get_items_from_search,
+   output_items_to_csv,
 )
 
 logging.basicConfig(
@@ -85,7 +81,7 @@ optional.add_argument(
     help=("source of the data based on providers specified "
           "in the configuration file"),
     nargs="?",
-    default="cyfronet",
+    default="marketplace_rs",
     type=str,
 )
 optional.add_argument(
@@ -112,6 +108,7 @@ optional.add_argument(
           "resources"),
     action="store_true",
 )
+
 optional.add_argument(
     "-h", "--help", action="help", help="show this help message and exit"
 )
@@ -169,19 +166,17 @@ rsmetrics_db = datastore[config["datastore"].split("/")[-1]]
 # automatically associate page ids to service ids
 # default to no caching
 if not args.use_cache:
-    eosc_url = get_eosc_marketplace_url()
+    service_list_url = config["service"]["service_list_url"]
     print(
         "Retrieving page: marketplace list of services... \nGrabbing url: {0}"
-        .format(eosc_url)
+        .format(service_list_url)
     )
-    eosc_page_content = get_service_catalog_page_content(eosc_url)
-    print("Page retrieved!\nGenerating results...")
-    eosc_service_results = get_service_catalog_items(eosc_page_content)
+    eosc_service_results = get_items_from_search(service_list_url, 'service')
 
     if config["service"]["store"]:
         # output to csv
-        save_service_items_to_csv(eosc_service_results,
-                                  config["service"]["store"])
+        output_items_to_csv(eosc_service_results,
+                            config["service"]["store"])
         print("File written to {}".format(config["service"]["store"]))
 
 # if cache file is used
@@ -214,45 +209,13 @@ for col in ['scientific_domain', 'category']:
     )
 
     rsmetrics_db[col].drop()
-    rsmetrics_db[col].insert_many(data)
+    try:
+        rsmetrics_db[col].insert_many(data)
+        logging.info("{} collection stored...".format(col))
+    except Exception:
+        pass
 
-    logging.info("{} collection stored...".format(col))
-
-# B. Working on users
-
-# 1) produce users csv with each user id along with the user's accessed
-# services
-# 2) query users from database for fields _id and accessed_services then create
-# a list of rows
-# 3) each row contains two elements:
-# first: user_id in string format and
-# second: a space separated sorted list of accessed services
-users = recdb["user"].find({}, {"accessed_services": 1})
-users = list(
-    map(
-        lambda x: {
-            "id": int(str(x["_id"])),
-            "accessed_resources": sorted(set(x["accessed_services"])),
-            "created_on": None,
-            "deleted_on": None,
-            "provider": ["cyfronet", "athena"],  # currently, static
-            "ingestion": "batch",  # currently, static
-        },
-        users,
-    )
-)
-
-rsmetrics_db["users"].delete_many(
-    {
-        "provider": {"$in": ["cyfronet", "athena"]},
-        "ingestion": "batch",
-    }
-)
-rsmetrics_db["users"].insert_many(users)
-
-logging.info("Users collection stored...")
-
-# D. Working on resources
+# B. Working on resources
 
 remote_resources = {}
 for d in recdb["service"].find({}, {'_id': 1, 'categories': 1,
@@ -276,7 +239,7 @@ for s in _ss:
             "category": remote_resources.setdefault(int(s.strip()),
                                                     (None, None))[1],
             "type": "service",  # currently, static
-            "provider": ["cyfronet", "athena"],  # currently, static
+            "provider": ["marketplace_rs", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static
         })
     except Exception as e:
@@ -284,7 +247,7 @@ for s in _ss:
 
 rsmetrics_db["resources"].delete_many(
     {
-        "provider": {"$in": ["cyfronet", "athena"]},
+        "provider": {"$in": ["marketplace_rs", "athena"]},
         "ingestion": "batch",
     }
 )
@@ -292,43 +255,7 @@ rsmetrics_db["resources"].insert_many(resources)
 
 logging.info("Resources collection stored...")
 
-# E. Working on user_actions
-
-
-class Mock:
-    pass
-
-
-class User_Action:
-    def __init__(self, source_page_id, target_page_id, order):
-        self.source = Mock()
-        self.target = Mock()
-        self.action = Mock()
-        self.source.page_id = source_page_id
-        self.target.page_id = target_page_id
-        self.action.order = order
-
-
-reward_mapping = {
-    "order": 1.0,
-    "interest": 0.7,
-    "mild_interest": 0.3,
-    "simple_transition": 0.0,
-    "unknown_transition": 0.0,
-    "exit": 0.0,
-}
-
-# reward_mapping.py is modified so that the function
-# reads the Transition rewards csv file once
-# consequently, one argument has been added to the
-# called function
-ROOT_DIR = "./"
-
-TRANSITION_REWARDS_CSV_PATH = os.path.join(
-    ROOT_DIR, "resources", "transition_rewards.csv"
-)
-transition_rewards_df = pd.read_csv(TRANSITION_REWARDS_CSV_PATH,
-                                    index_col="source")
+# C. Working on user_actions
 
 # reading resources to be used for filtering user_actions
 resources = pd.DataFrame(
@@ -351,55 +278,68 @@ resources.columns = [
 resources = pd.Series(resources["Service"].values,
                       index=resources["Page"]).to_dict()
 
+reverse_resources = {v: k for k, v in resources.items()}
+
 luas = []
 col = "user_actions" if provider["name"] == "athena" else "user_action"
 for ua in recdb[col].find(query).sort("user"):
-    # set -1 to anonymous users
-    user = -1
+    # in legacy mode the non-existance of user_id equals to anonynoums action,
+    # which in rs metrics (legacy mode) is indicated with -1
+    user_id = -1
+    aai_uid = None
+    unique_id = None
     if "user" in ua:
-        user = ua["user"]
+        user_id = ua["user"]
+
+    if "aai_uid" in ua:
+        aai_uid = ua["aai_uid"] if not ua["aai_uid"] == "" else None
+
+    if "unique_id" in ua:
+        unique_id = str(ua["unique_id"])
 
     # process data that map from page id to service id exist
     # for both source and target page ids
     # if not set service id to -1
     try:
-        _pageid = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
-        source_service_id = resources[_pageid]
+        source_path = "/" + "/".join(ua["source"]["page_id"].split("/")[1:3])
+        source_service_id = resources[source_path]
+
     except (KeyError, IndexError):
         source_service_id = -1
 
     try:
-        _pageid = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
-        target_service_id = resources[_pageid]
+        target_path = "/" + "/".join(ua["target"]["page_id"].split("/")[1:3])
+
+        # this involves the current schema and not the legacy
+        # check if action comes from the search page
+        # then correct the target_path which includes the EOSC Marketplace
+        # website with the actual service's landing page based on the
+        # resource_lookup (the reversed version)
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  "|data-source|training|guideline|other)"
+        if re.findall(pattern, ua["source"]["page_id"]):
+            source_path = "/services"
+            target_path = reverse_resources[
+                int(ua["source"]["root"]["resource_id"])]
+
+        target_service_id = resources[target_path]
     except KeyError:
         target_service_id = -1
 
-    # function has been modified where one more argument is given
-    # in order to avoid time-consuming processing of reading csv file
-    # for every func call
-    symbolic_reward = rm.ua_to_reward_id(
-        transition_rewards_df,
-        User_Action(
-            ua["source"]["page_id"],
-            ua["target"]["page_id"],
-            ua["action"]["order"]
-        ),
-    )
-
-    reward = reward_mapping[symbolic_reward]
-
     luas.append(
         {
-            "user_id": int(user),
+            "user_id": user_id,
+            "aai_uid": aai_uid,
+            "unique_id": unique_id,
             "source_resource_id": int(source_service_id),
             "target_resource_id": int(target_service_id),
-            "reward": float(reward),
+            "reward": 1.0 if ua["action"]["order"] else 0.0,
             "panel": ua["source"]["root"]["type"],
             "timestamp": ua["timestamp"],
-            "source_path": ua["source"]["page_id"],
-            "target_path": ua["target"]["page_id"],
+            "source_path": source_path,
+            "target_path": target_path,
             "type": "service",  # currently, static
-            "provider": ["cyfronet", "athena"],  # currently, static
+            "provider": ["marketplace_rs", "athena"],  # currently, static
             "ingestion": "batch",  # currently, static
         }
     )

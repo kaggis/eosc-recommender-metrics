@@ -65,7 +65,7 @@
                 <div class="app-header-left">
                         <div class="widget-content"><span class="text-light h5">Report:</span></div> 
                         <div class="widget-content"><select class="form-select" onchange="if (this.value) window.location.href=this.value">
-                            {%for item in data.reports | sort %}
+                            {%for item in data.reports %}
                             <option value="/ui/reports/{{item}}/kpis" {%if item==data.report %} selected {%endif%}>{{item}}</option>
                             {%endfor%}
                         </select></div>
@@ -245,7 +245,7 @@
                             <div class="card mb-3 widget-content">
                                 <div class="widget-content-wrapper">
                                     <div class="font-icon-wrapper font-icon-lg">
-                                        <i class="pe-7s-look icon-gradient bg-malibu-beach"> </i>
+                                        <i class="pe-7s-star icon-gradient bg-mean-fruit"> </i>
                                     </div>
                                     <div class="widget-content-left">
 
@@ -260,7 +260,7 @@
                                             </h4>
                                         </div>
                                         <div class="widget-subheading">The ratio of user hits divided by the total
-                                            number of users (user hit: a user that has accessed at least one service
+                                            number of users (user hit: a user that has accessed at least one item
                                             that is also a personal recommendation)</div>
                                     </div>
                                     <div class="widget-content-right">
@@ -279,15 +279,15 @@
                         <div class="col-md-6">
                             <div class="main-card mb-3 card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Top 5 recommended services</h5>
+                                    <h5 class="card-title">Top 5 recommended items</h5>
                                     <p>
 
-                                        {% for item in data.top5_services_recommended.value %}
+                                        {% for item in data.top5_items_recommended.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.service_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.item_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">
@@ -335,15 +335,15 @@
                         <div class="col-md-6">
                             <div class="main-card mb-3 card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Top 5 ordered services</h5>
+                                    <h5 class="card-title">Top 5 ordered items</h5>
                                     <p>
 
-                                        {% for item in data.top5_services_ordered.value %}
+                                        {% for item in data.top5_items_ordered.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.service_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.item_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">
@@ -401,7 +401,7 @@
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.category_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.category_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">
@@ -457,7 +457,7 @@
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.category_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.category_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">
@@ -515,7 +515,7 @@
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.scientific_domain_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.scientific_domain_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">
@@ -571,7 +571,7 @@
                                         <div class="row">
                                             <div class="widget-content col-md-10">
                                                 <h4><b>#{{loop.index}}</b> <a
-                                                        href="{{item.service_url}}">{{item.scientific_domain_name}}</a></h4>
+                                                        href="{{item.item_url}}">{{item.scientific_domain_name}}</a></h4>
                                                 <hr>
                                                 </hr>
                                                 <div class="widget-content-outer">

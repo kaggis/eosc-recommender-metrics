@@ -62,9 +62,9 @@ def load_sidebar_info():
 app.sidebar_info = load_sidebar_info()
 
 
-def respond_report_404(provider_name):
+def respond_report_404(report_name):
     return jsonify("Results for report: {} not found!"
-                   .format(provider_name)), 404
+                   .format(report_name)), 404
 
 
 def respond_metric_404(metric_name):
@@ -93,18 +93,21 @@ def respond_stat_404(stat_name):
     )
 
 
-def db_get_provider_names():
-    """Get a list of the names of the providers handled in the system"""
-    result = mongo.db.metrics.find({}, {"_id": 0, "provider": 1})
-    providers = []
+def db_get_report_names():
+    """Get a list of the names of the reports handled in the system
+    sorted by the most recent evaluated report
+    """
+    result = mongo.db.metrics.find(
+        {}, {"name": 1}).sort("_id", -1)
+    reports = []
     for item in result:
-        providers.append(item["provider"])
-    return providers
+        reports.append(item["name"])
+    return reports
 
 
-def db_get_metrics(provider_name):
+def db_get_metrics(report_name):
     """Get evaluated metric results from mongodb"""
-    return mongo.db.metrics.find_one({"provider": provider_name}, {"_id": 0})
+    return mongo.db.metrics.find_one({"name": report_name}, {"_id": 0})
 
 
 @app.route("/", strict_slashes=False)
@@ -116,38 +119,39 @@ def html_index():
 @app.route("/ui", strict_slashes=False)
 def html_default_report():
     """Select the first available provider and serve it's report as default"""
-    default = db_get_provider_names()[0]
+    default = db_get_report_names()[0]
     return redirect("/ui/reports/{}".format(default), code=302)
 
 
-@app.route("/ui/reports/<string:provider_name>", strict_slashes=False)
-def html_metrics(provider_name):
+@app.route("/ui/reports/<string:report_name>", strict_slashes=False)
+def html_metrics(report_name):
     """Serve the main metrics dashboard"""
-    reports = db_get_provider_names()
-    if provider_name not in reports:
+    reports = db_get_report_names()
+    if report_name not in reports:
         abort(404)
 
     result = {}
     stats_needed = [
-        "users",
+        "registered_users",
+        "anonymous_users",
         "recommended_items",
-        "services",
+        "items",
         "user_actions",
         "user_actions_registered",
         "user_actions_registered_perc",
         "user_actions_anonymous",
         "user_actions_anonymous_perc",
-        "user_actions_order",
-        "user_actions_order_registered",
-        "user_actions_order_registered_perc",
-        "user_actions_order_anonymous",
-        "user_actions_order_anonymous_perc",
+        "item_views",
+        "item_views_registered",
+        "item_views_registered_perc",
+        "item_views_anonymous",
+        "item_views_anonymous_perc",
         "start",
         "end",
     ]
     for stat_name in stats_needed:
         print(stat_name)
-        result[stat_name] = get_statistic(provider_name, stat_name).get_json()
+        result[stat_name] = get_statistic(report_name, stat_name).get_json()
 
     metrics_needed = [
         "user_coverage",
@@ -159,69 +163,70 @@ def html_metrics(provider_name):
     ]
 
     for metric_name in metrics_needed:
-        result[metric_name] = get_metric(provider_name, metric_name).get_json()
+        result[metric_name] = get_metric(report_name, metric_name).get_json()
 
-    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
-    result["report"] = provider_name
+    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
+    result["report"] = report_name
     result["reports"] = reports
     result["sidebar_info"] = app.sidebar_info
     result["metric_active"] = None
     return render_template("./rsmetrics.html", data=result)
 
 
-@app.route("/ui/reports/<string:provider_name>/kpis", strict_slashes=False)
-def html_kpis(provider_name):
+@app.route("/ui/reports/<string:report_name>/kpis", strict_slashes=False)
+def html_kpis(report_name):
     """Serve html page about kpis per provider"""
     # call directly the get_metrics flask method implemented
     # in our api to get json about all metrics
-    reports = db_get_provider_names()
-    if provider_name not in reports:
+    reports = db_get_report_names()
+    if report_name not in reports:
         abort(404)
 
     result = {}
 
     stats_needed = ["start", "end"]
     for stat_name in stats_needed:
-        result[stat_name] = get_statistic(provider_name, stat_name).get_json()
+        result[stat_name] = get_statistic(report_name, stat_name).get_json()
 
     metrics_needed = [
         "hit_rate",
         "click_through_rate",
-        "top5_services_ordered",
-        "top5_services_recommended",
+        "top5_items_ordered",
+        "top5_items_recommended",
         "top5_categories_ordered",
         "top5_categories_recommended",
         "top5_scientific_domains_ordered",
         "top5_scientific_domains_recommended",
     ]
     for metric_name in metrics_needed:
-        result[metric_name] = get_metric(provider_name, metric_name).get_json()
+        result[metric_name] = get_metric(report_name, metric_name).get_json()
 
-    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
+    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
     result["sidebar_info"] = app.sidebar_info
-    result["report"] = provider_name
+    result["report"] = report_name
     result["reports"] = reports
     result["metric_active"] = None
 
     return render_template("./kpis.html", data=result)
 
 
-@app.route("/ui/reports/<string:provider_name>/graphs", strict_slashes=False)
-def html_graphs(provider_name):
+@app.route("/ui/reports/<string:report_name>/graphs",
+           strict_slashes=False)
+def html_graphs(report_name):
     """Serve html page about graphs per provider"""
-    reports = db_get_provider_names()
-    if provider_name not in reports:
+    reports = db_get_report_names()
+    if report_name not in reports:
         abort(404)
 
     result = {}
 
     stats_needed = ["start", "end"]
     for stat_name in stats_needed:
-        result[stat_name] = get_statistic(provider_name, stat_name).get_json()
+        result[stat_name] = get_statistic(report_name, stat_name).get_json()
 
-    result["timestamp"] = get_api_index(provider_name).get_json()["timestamp"]
+    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
     result["sidebar_info"] = app.sidebar_info
-    result["report"] = provider_name
+    result["report"] = report_name
     result["reports"] = reports
     result["metric_active"] = None
 
@@ -232,7 +237,7 @@ def html_graphs(provider_name):
            strict_slashes=False)
 def html_metric_description(metric_name):
     """Serve html page about description of a specific metric"""
-    reports = db_get_provider_names()
+    reports = db_get_report_names()
     result = {}
 
     # compose path to open correct yaml file
@@ -256,55 +261,55 @@ def html_metric_description(metric_name):
     return render_template("./metric_desc.html", data=result)
 
 
-@app.route("/api/reports/<string:provider_name>")
-def get_api_index(provider_name):
+@app.route("/api/reports/<string:report_name>")
+def get_api_index(report_name):
     """Serve metrics and statistics as default api response"""
-    result = db_get_metrics(provider_name)
+    result = db_get_metrics(report_name)
     return jsonify(result)
 
 
 @app.route("/api/reports")
 def get_reports():
     """Get provider names"""
-    return jsonify(db_get_provider_names())
+    return jsonify(db_get_report_names())
 
 
-@app.route("/api/reports/<string:provider_name>/metrics")
-def get_metrics(provider_name):
+@app.route("/api/reports/<string:report_name>/metrics")
+def get_metrics(report_name):
     """Serve the metrics data in json format"""
-    result = db_get_metrics(provider_name)
+    result = db_get_metrics(report_name)
     if not result:
-        return respond_report_404(provider_name)
+        return respond_report_404(report_name)
     return jsonify(result["metrics"])
 
 
-@app.route("/api/reports/<string:provider_name>/metrics/<string:metric_name>")
-def get_metric(provider_name, metric_name):
+@app.route("/api/reports/<string:report_name>/metrics/<string:metric_name>")
+def get_metric(report_name, metric_name):
     """Serve specific metric data in json format"""
-    result = db_get_metrics(provider_name)
+    result = db_get_metrics(report_name)
     if not result:
-        return respond_report_404(provider_name)
+        return respond_report_404(report_name)
     for metric in result["metrics"]:
         if metric["name"] == metric_name:
             return jsonify(metric)
     return respond_metric_404(metric_name)
 
 
-@app.route("/api/reports/<string:provider_name>/statistics")
-def get_statistics(provider_name):
+@app.route("/api/reports/<string:report_name>/statistics")
+def get_statistics(report_name):
     """Serve the statistics data in json format"""
-    result = db_get_metrics(provider_name)
+    result = db_get_metrics(report_name)
     if not result:
-        return respond_report_404(provider_name)
+        return respond_report_404(report_name)
     return jsonify(result["statistics"])
 
 
-@app.route("/api/reports/<string:provider_name>/statistics/<string:stat_name>")
-def get_statistic(provider_name, stat_name):
+@app.route("/api/reports/<string:report_name>/statistics/<string:stat_name>")
+def get_statistic(report_name, stat_name):
     """Serve specific statistic data in json format"""
-    result = db_get_metrics(provider_name)
+    result = db_get_metrics(report_name)
     if not result:
-        return respond_report_404(provider_name)
+        return respond_report_404(report_name)
     for stat in result["statistics"]:
         if stat["name"] == stat_name:
             return jsonify(stat)

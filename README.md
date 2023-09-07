@@ -1,20 +1,26 @@
-# eosc-recommender-metrics
-
-A framework for counting the recommender metrics
-
-## Preprocessor v.0.2
+# Recommender Metrics Framework
+A framework for generating statistics, metrics, KPIs, and graphs for Recommender Systems
 
 <p align="center">
-<a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png">
-<img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/Preprocessor.png" width="70%"/>
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/flow.png">
+<img src="website/docs/static/img/flow.png" width="70%"/>
 </a>
 </p>
 
-## RS metrics v.0.2
+
+## Preprocessor
 
 <p align="center">
-<a href="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png">
-<img src="https://github.com/nikosT/eosc-recommender-metrics/blob/master/docs/RSmetrics.png" width="70%"/>
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/preprocessor.png">
+<img src="website/docs/static/img/preprocessor.png" width="70%"/>
+</a>
+</p>
+
+## RS metrics
+
+<p align="center">
+<a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/rsmetrics.png">
+<img src="website/docs/static/img/rsmetrics.png" width="70%"/>
 </a>
 </p>
 
@@ -31,21 +37,21 @@ A framework for counting the recommender metrics
 5. Configure `./preprocessor_common.py`, `./preprocessor.py` and `./rsmetrics.py` by editting the `config.yaml` or providing another with `-c`.
 6. Run from terminal: `./preprocessor_common.py` in order to gather `users` and `resources` and store them in the `Datastore`:
 ```bash
-./preprocessor_common.py # this will ingest users and resources [from scratch] by retrieving the data from 'cyfronet' provider (which is specified in the config file
-./preprocessor_common.py -p cyfronet # equivalent to first one
-./preprocessor_common.py -p cyfronet --use-cache # equivalent to first one but use the cache file to read resources instead of downloading them via the EOSC Marketplace
-./preprocessor_common.py -p athena # currently is not working since users collection only exist in 'cyfronet'
+./preprocessor_common.py # this will ingest users and resources [from scratch] by retrieving the data from 'marketplace_rs' provider (which is specified in the config file
+./preprocessor_common.py -p marketplace_rs # equivalent to first one
+./preprocessor_common.py -p marketplace_rs --use-cache # equivalent to first one but use the cache file to read resources instead of downloading them via the EOSC Marketplace
+./preprocessor_common.py -p athena # currently is not working since users collection only exist in 'marketplace_rs'
 ```
 7. Run from terminal: `./preprocessor.py -p <provider>` in order to gather `user_actions` and `recommendations` from the particular provider and store them in the `Datastore`:
 ```bash
-./preprocessor.py # this will ingest user_actions and recommendations [from scratch] by retrieving the data from 'cyfronet' provider (which is specified in the config file
-./preprocessor.py -p cyfronet # equivalent to first one
+./preprocessor.py # this will ingest user_actions and recommendations [from scratch] by retrieving the data from 'marketplace_rs' provider (which is specified in the config file
+./preprocessor.py -p marketplace_rs # equivalent to first one
 ./preprocessor.py -p athena # same procedure as the first one but for 'athena' provider
 ```
 9. Run from terminal: `./rsmetrics.py -p <provider>` in order to gather the respective data (`users`, `resources`, `user_actions` and `recommendations`), calculate `statistics` and `metrics` and store them in the `Datastore`, concerning that particular provider:
 ```bash
-./rsmetrics.py # this will calculate and store statistics and metrics concerning data (users, resources, user_actions and recommendations) concerning the specified provider (which by default is 'cyfronet')
-./rsmetrics.py -p cyfronet # equivalent to first one
+./rsmetrics.py # this will calculate and store statistics and metrics concerning data (users, resources, user_actions and recommendations) concerning the specified provider (which by default is 'marketplace_rs')
+./rsmetrics.py -p marketplace_rs # equivalent to first one
 ./rsmetrics.py -p athena # same procedure as the first one for 'athena' provider
 ```
 
@@ -92,15 +98,35 @@ optional arguments:
 
 ### Utilities
 
-#### Get service catalog script (./get_service_catalog.py)
+#### Get item catalog script (./get_catalog.py)
 
-This script contacts EOSC Marketplace catalog and generates a csv with a list of all available services, their name, id and url
+This script contacts EOSC Marketplace remote service api and generates a csv with a list of all available items of a specific catalog (e.g. services, datasets, trainings, publications, data_sources, ), their name, id and url
+
 
 To execute the script issue:
 ```
-chmod u+x ./get_service_catalog.py
-./get_service_catalog.py
+chmod u+x ./get_catalog.py
+./get_catalog.py -u https://remote.example.foo -c service -b 100 -l 2000 -o `my-catalog.csv`
 ```
+
+Arguments:
+- `-u` or `-url`: the endpoint url of the marketplace search service
+- `-o` or `--output`: this is the output csv file (e.g. `./service_catalog.csv` or `./training_catalog.csv`) - optional
+- `-b` or `--batch`: because search service returns results with pagination this configures the batch for each retrieval (number of items per request) - optional
+- `-l` or `--limit`: (optional) the user can specify a limit of max items to be retrieves (this is handy for large catalogs if you want to receive a subset) - optional
+- `-c` or `--category`: the category of list of items you want to retrieve
+- `-d` or `--datastore`: mongodb destination database uri to store the results into (e.g. `mongodb://localhost:27017/rsmetrics`) - optional
+- `-p` or `--providers`: state in a comma-separated list wich providers (engines) handle the items of the specific category
+currently supported category types for marketplace:
+- `service`
+- `training`
+- `dataset` (this is for items of the `DATA` catalog)
+- `data_source` (this is for items of the `DATASOURCES` catalog)
+- `publication`
+- `guideline` (this is for items of the `INTEROPERABILITY GUIDELINES` catalog)
+- `software`
+- `bundle`
+- `other`
 
 ##### Serve Evaluation Reports as a Service
 

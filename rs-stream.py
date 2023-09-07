@@ -11,6 +11,11 @@ import pymongo
 import dateutil.parser
 from datetime import datetime
 
+# mapping recommendations
+rec_map = {'publications': 'publication', 'datasets': 'dataset',
+           'software': 'software', 'services': 'service',
+           'trainings': 'training', 'other_research_product': 'other'}
+
 # Streaming connector using stomp protocol to ingest data from rs databus
 
 # establish basic logging
@@ -29,12 +34,6 @@ def connect_subscribe(msg_queue, username, password, topic):
 
 
 def main(args):
-    # extract provider arg
-    provider = args.provider
-
-    # init resource_lookup dictionary where we store service paths to
-    # corresponding ids
-    resource_lookup = {}
 
     # Create a listener class to react on each message received from the queue
     class UserActionsListener(stomp.ConnectionListener):
@@ -56,11 +55,23 @@ def main(args):
             panel = "other"
             target_path = ""
             source_path = ""
-            target_resource_id = -1
-            source_resource_id = -1
-            user_id = -1
+            target_resource_id = None
+            source_resource_id = None
+            # in current mode there should be not found user_id=-1
+            # a -1 indicates a legacy mode,
+            # since it is current user_id is set with None
+            user_id = None
+            aai_uid = None
+            unique_id = None
             if "user_id" in message:
                 user_id = message["user_id"]
+
+            if "aai_uid" in message:
+                aai_uid = message["aai_uid"] if not message["aai_uid"] == "" \
+                                             else None
+
+            if "unique_id" in message:
+                unique_id = str(message["unique_id"])
 
             if "source" in message:
                 if "page_id" in message["source"]:
@@ -69,33 +80,30 @@ def main(args):
                 if "root" in message["source"]:
                     if "type" in message["source"]["root"]:
                         panel = message["source"]["root"]["type"]
+                    if "resource_type" in message["source"]["root"]:
+                        resource_type = \
+                            message["source"]["root"]["resource_type"]
+                    if "resource_id" in message["source"]["root"]:
+                        target_resource_id = \
+                            message["source"]["root"]["resource_id"]
 
             if "target" in message:
                 if "page_id" in message["target"]:
                     target_path = message["target"]["page_id"]
 
-            # if path exist in resource lookup dictionary,
-            # identify the resource id
-            if target_path in resource_lookup:
-                target_resource_id = resource_lookup[target_path]
-
-            # if path exist in resource lookup dictionary,
-            # identify the resource id
-            if source_path in resource_lookup:
-                source_resource_id = resource_lookup[source_path]
-
             record = {
                 "timestamp": dateutil.parser.isoparse(message["timestamp"]),
                 "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
                 "panel": panel,
                 "target_path": target_path,
                 "source_path": source_path,
                 "target_resource_id": target_resource_id,
                 "source_resource_id": source_resource_id,
-                "reward": 0.0,
-                "type": "service",
+                "reward": 1.0 if message["action"]["order"] else 0.0,
+                "type": resource_type,
                 "ingestion": "stream",
-                "provider": provider,
             }
 
             rsmetrics_db["user_actions"].insert_one(record)
@@ -132,7 +140,6 @@ def main(args):
                               'deleted_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00'))
                               if message['cud'] == 'delete' else None,
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -150,7 +157,6 @@ def main(args):
                               'created_on': datetime.fromisoformat(
                                   message['timestamp'].replace('Z', '+00:00')),
                               'deleted_on': None,
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -183,7 +189,6 @@ def main(args):
                               'category':
                               message['record']['categories'],
                               'type': 'service',
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -206,7 +211,6 @@ def main(args):
                               message['record']['scientific_domains'],
                               'category': message['record']['categories'],
                               'type': 'service',
-                              'provider': ['cyfronet', 'athena'],
                               'ingestion': 'stream'}
 
                     # a connection has already been established at main
@@ -224,6 +228,55 @@ def main(args):
             else:
                 rsmetrics_db['other_events_streaming'].insert_one(message)
 
+    # Create a listener class to react on each message received from the queue
+    class RecommendationsListener(stomp.ConnectionListener):
+        def __init__(self, conn):
+            self.conn = conn
+
+        # In case of error log it along with the message
+        def on_error(self, frame):
+            logging.error("error occured {}".format(frame.body))
+
+        def on_disconnect(self):
+            logging.warning("disconnected ...trying to reconnect")
+            connect_subscribe(self.conn)
+
+        def on_message(self, frame):
+            # process the message
+            message = json.loads(frame.body)
+            # in current mode there should be not found user_id=-1
+            # a -1 indicates a legacy mode,
+            # since it is current user_id is set with None
+            user_id = None
+            aai_uid = None
+            unique_id = None
+            if "user_id" in message["context"]:
+                user_id = message["context"]["user_id"]
+
+            if "aai_uid" in message["context"]:
+                aai_uid = message["context"]["aai_uid"]
+                aai_uid = message["context"]["aai_uid"] if not \
+                    message["context"]["aai_uid"] == "" \
+                    else None
+
+            if "unique_id" in message["context"]:
+                unique_id = str(message["context"]["unique_id"])
+
+            # handle data accordingly
+            record = {
+                "timestamp": dateutil.parser.isoparse(
+                             message["context"]["timestamp"]),
+                "user_id": user_id,
+                "aai_uid": aai_uid,
+                "unique_id": unique_id,
+                "resource_ids": message["recommendations"],
+                "type": rec_map[message["panel_id"]],
+                "ingestion": "stream",
+                "provider": message["recommender_systems"][0].lower(),
+            }
+
+            rsmetrics_db["recommendations"].insert_one(record)
+
     # connect to the datastore
     mongo = pymongo.MongoClient(args.datastore,
                                 uuidRepresentation="pythonLegacy")
@@ -232,14 +285,6 @@ def main(args):
 
     username, password = args.auth.split(":")
     host, port = args.queue.split(":")
-
-    # get resources (services for the time being)
-    resources = rsmetrics_db["resources"].find({}, {"_id": 0,
-                                               "path": 1, "id": 1})
-    for item in resources:
-        # if the service item has indeed an updated path (url) grab it
-        if "path" in item:
-            resource_lookup[item["path"]] = item["id"]
 
     # create the connection to the queue
     msg_queue = stomp.Connection([(host, port)], heartbeats=(10000, 5000))
@@ -250,6 +295,8 @@ def main(args):
         msg_queue.set_listener("", UserActionsListener(msg_queue))
     elif args.data_type == "mp_db_events":
         msg_queue.set_listener('', UserEventsListener(msg_queue))
+    elif args.data_type == "recommendations":
+        msg_queue.set_listener('', RecommendationsListener(msg_queue))
     else:
         logging.error(
             "{} is not a supported ingestion data type".format(args.data_type)
@@ -300,14 +347,6 @@ if __name__ == "__main__":
         help="datastore uri",
         required=True,
         dest="datastore",
-    )
-    parser.add_argument(
-        "-p",
-        "--provider",
-        metavar="STRING",
-        help="name of the provider",
-        required=True,
-        dest="provider",
     )
 
     # Pass the arguments to main method

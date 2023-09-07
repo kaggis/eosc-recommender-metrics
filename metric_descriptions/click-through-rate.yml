@@ -8,7 +8,7 @@ description: >
 output:
     type: float
     min: 0
-    max: +inf
+    max: +\(\infty\)
     comment: A value of 0 indicates that no clicks through recommendations panels occurred
 
 prerequisites:
