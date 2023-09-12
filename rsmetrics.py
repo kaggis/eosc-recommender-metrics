@@ -157,10 +157,10 @@ if not args.use_cache:
     _args.limit = -1
     _args.datastore = config["datastore"]
     _args.url = config['service']['service_list_url']
-    _args.providers = args.provider
+    _args.provider = args.provider
 
     try:
-        for cat in config['service']['category'][_args.providers]:
+        for cat in config['service']['category'][_args.provider]:
             _args.category = cat
             get_catalog.main(_args)
     except Exception as e:
@@ -328,7 +328,7 @@ logging.info("Reading items...")
 run.items = pd.DataFrame(
     list(rsmetrics_db["resources"].find({
         "$and": [
-            {"provider": {"$in": [args.provider]}},
+            {"provider": args.provider},
             {"$or": [{"created_on": {"$lte": args.endtime}},
                      {"created_on": None}]},
             {"$or": [{"deleted_on": {"$gte": args.starttime}},
