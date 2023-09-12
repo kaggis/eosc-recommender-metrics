@@ -16,6 +16,7 @@ class Runtime:
         self.categories = None
         self.scientific_domains = None
         self.provider = None
+        self.errors = []
 
 
 # decorator to add the text attribute to function as major metric
@@ -46,21 +47,15 @@ def pass_on_error(func):
             result = func(*args, **kwargs)
         except Exception as e:
             print('Error occurred in: {}. "{}"'.format(func.__name__, str(e)))
+
+            # find the object which contains the errors variable
+            # append it with function names for those that exceptions occurred
+            _args = list(filter(lambda x: isinstance(x, Runtime), args))
+            if _args:
+                _args[0].errors.append(func.__name__)
+
             return None
-        return result
 
-    return wrapper
-
-
-# decorator to continue the procedure
-# after fatal error in statistic/metric calculation
-def pass_top5_error(func):
-    def wrapper(*args, **kwargs):
-        try:
-            result = func(*args, **kwargs)
-        except Exception as e:
-            print('Error occurred in: {}. "{}"'.format(func.__name__, str(e)))
-            return []
         return result
 
     return wrapper
@@ -951,7 +946,7 @@ def accuracy(object):
 
 
 @metric("The Top 5 recommended items according to recommendations entries")
-@pass_top5_error
+@pass_on_error
 def top5_items_recommended(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -1036,7 +1031,7 @@ def top5_items_recommended(
 
 
 @metric("The Top 5 ordered items according to user actions entries")
-@pass_top5_error
+@pass_on_error
 def top5_items_ordered(
     object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
 ):
@@ -1329,14 +1324,14 @@ def __top5_ordered(object, element='category', k=5, anonymous=False):
 
 @metric("The Top 5 recommended categories according to recommendations entries"
         )
-@pass_top5_error
+@pass_on_error
 def top5_categories_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 recommended scientific domains according to recommendations\
 entries")
-@pass_top5_error
+@pass_on_error
 def top5_scientific_domains_recommended(object, k=5, anonymous=False):
     return __top5_recommended(object, k=5, element='scientific_domain',
                               anonymous=False)
@@ -1344,14 +1339,14 @@ def top5_scientific_domains_recommended(object, k=5, anonymous=False):
 
 @metric("The Top 5 ordered categories according to recommendations entries"
         )
-@pass_top5_error
+@pass_on_error
 def top5_categories_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='category', anonymous=False)
 
 
 @metric("The Top 5 ordered scientific domains according to recommendations\
 entries")
-@pass_top5_error
+@pass_on_error
 def top5_scientific_domains_ordered(object, k=5, anonymous=False):
     return __top5_ordered(object, k=5, element='scientific_domain',
                           anonymous=False)
