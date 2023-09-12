@@ -235,7 +235,12 @@
                                     </div>
                                     <div class="widget-content-right">
                                         <div class="widget-numbers text-success">
-                                            <span>{{data.click_through_rate.value}}</span></div>
+                                            {% if data.click_through_rate.value== None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %}  
+                                                <span>{{data.click_through_rate.value}}</span>
+                                            {%endif%}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -264,7 +269,12 @@
                                             that is also a personal recommendation)</div>
                                     </div>
                                     <div class="widget-content-right">
-                                        <div class="widget-numbers text-success"><span>{{data.hit_rate.value}}</span>
+                                        <div class="widget-numbers text-success">
+                                            {% if data.hit_rate.value == None %}
+                                            <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %}  
+                                            <span>{{data.hit_rate.value}}</span>
+                                            {%endif%}
                                         </div>
                                     </div>
                                 </div>
@@ -281,7 +291,9 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 recommended items</h5>
                                     <p>
-
+                                        {% if data.top5_items_recommended.value == None %}
+                                            <span class="error">⚠️ Calculation Issue</span>
+                                        {% else %}    
                                         {% for item in data.top5_items_recommended.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
@@ -324,6 +336,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
 
                                     </p>
 
@@ -337,7 +350,9 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 ordered items</h5>
                                     <p>
-
+                                        {% if data.top5_items_ordered.value == None %}
+                                            <span class="error">⚠️ Calculation Issue</span>
+                                        {% else %}    
                                         {% for item in data.top5_items_ordered.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
@@ -379,6 +394,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
                                     </p>
 
                                 </div>
@@ -395,7 +411,9 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 recommended categories</h5>
                                     <p>
-
+                                        {% if data.top5_categories_recommended.value == None %}
+                                            <span class="error">⚠️ Calculation Issue</span>
+                                        {% else %}    
                                         {% for item in data.top5_categories_recommended.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
@@ -438,6 +456,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
 
                                     </p>
 
@@ -451,7 +470,9 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 ordered categories</h5>
                                     <p>
-
+                                        {% if data.top5_categories_ordered.value == None %}
+                                        <span class="error">⚠️ Calculation Issue</span>
+                                        {% else %}    
                                         {% for item in data.top5_categories_ordered.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
@@ -493,6 +514,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
                                     </p>
 
                                 </div>
@@ -509,8 +531,10 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 recommended scientific domains</h5>
                                     <p>
-
-                                        {% for item in data.top5_scientific_domains_recommended.value %}
+                                    {% if data.top5_scientific_domains_recommended.value == None %}
+                                    <span class="error">⚠️ Calculation Issue</span>
+                                    {% else %}    
+                                    {% for item in data.top5_scientific_domains_recommended.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
@@ -552,6 +576,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
 
                                     </p>
 
@@ -565,7 +590,9 @@
                                 <div class="card-body">
                                     <h5 class="card-title">Top 5 ordered scientific domains</h5>
                                     <p>
-
+                                        {% if data.top5_scientific_domains_ordered.value == None %}
+                                        <span class="error">⚠️ Calculation Issue</span>
+                                        {% else %}    
                                         {% for item in data.top5_scientific_domains_ordered.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
@@ -607,6 +634,7 @@
                                         </div>
                                     </div>
                                     {%endfor%}
+                                    {%endif%}
                                     </p>
 
                                 </div>
@@ -646,6 +674,15 @@
                                 <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip"
                                     data-bs-placement="bottom" title="{{timestamp_data[0]}}T{{timestamp_data[1]}}"><i
                                         class="fa fa-calendar"></i> {{timestamp_data[0]}}</div>
+                                
+                                {% if data.errors and data.errors|length > 0 %}
+                                <div class="mb-2 me-2 badge bg-danger" data-toggle="tooltip" data-bs-toggle="tooltip"
+                                    data-bs-placement="bottom" title="
+                                    {% for item in data.errors %}
+                                    {{item}}{% if not loop.last %}, {% endif %}
+                                    {%endfor%}
+                                    "><i class="fa fa-warning"></i> Issues ({{data.errors|length}})</div>
+                                {%endif%}
                             </div>
                         </div>
                     </div>

@@ -165,7 +165,9 @@ def html_metrics(report_name):
     for metric_name in metrics_needed:
         result[metric_name] = get_metric(report_name, metric_name).get_json()
 
-    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
+    data = get_api_index(report_name).get_json()
+    result["timestamp"] = data.get("timestamp")
+    result["errors"] = data.get("errors")
     result["report"] = report_name
     result["reports"] = reports
     result["sidebar_info"] = app.sidebar_info
@@ -201,7 +203,9 @@ def html_kpis(report_name):
     for metric_name in metrics_needed:
         result[metric_name] = get_metric(report_name, metric_name).get_json()
 
-    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
+    data = get_api_index(report_name).get_json()
+    result["timestamp"] = data.get("timestamp")
+    result["errors"] = data.get("errors")
     result["sidebar_info"] = app.sidebar_info
     result["report"] = report_name
     result["reports"] = reports
@@ -224,7 +228,9 @@ def html_graphs(report_name):
     for stat_name in stats_needed:
         result[stat_name] = get_statistic(report_name, stat_name).get_json()
 
-    result["timestamp"] = get_api_index(report_name).get_json()["timestamp"]
+    data = get_api_index(report_name).get_json()
+    result["timestamp"] = data.get("timestamp")
+    result["errors"] = data.get("errors")
     result["sidebar_info"] = app.sidebar_info
     result["report"] = report_name
     result["reports"] = reports

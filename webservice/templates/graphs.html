@@ -291,6 +291,15 @@
                                     <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip"
                                         data-bs-placement="bottom" title="{{timestamp_data[0]}}T{{timestamp_data[1]}}"><i
                                             class="fa fa-calendar"></i> {{timestamp_data[0]}}</div>
+                                    
+                                    {% if data.errors and data.errors|length > 0 %}
+                                    <div class="mb-2 me-2 badge bg-danger" data-toggle="tooltip" data-bs-toggle="tooltip"
+                                        data-bs-placement="bottom" title="
+                                        {% for item in data.errors %}
+                                        {{item}}{%if not loop.last %}, {% endif %}
+                                        {%endfor%}
+                                        "><i class="fa fa-warning"></i> Issues ({{data.errors|length}})</div>
+                                    {%endif%}
                                 </div>
                             </div>
                       
@@ -307,6 +316,7 @@
        function txData(response){
             // json response holds data in the "value" field as a nested array
             data = response.value
+
             // prepare the two arrays of labels and values that will be used for charting
             labels = []
             values = []
@@ -323,9 +333,20 @@
             return [labels,values]
         }
 
+
+        
+
         // having the api data render a timeseries barchart in the specific divName div, using the specific color
         function renderTimeseries(data,divName,color) {
            
+
+           
+            // check if null data so render a warning instead
+            if (data.value === null) {
+                document.getElementById(divName).innerHTML = '<span class="error">⚠️ Calculation Issue</span>';
+                return;
+            }
+
             // get the two arrays from transforming the data
             let [labels, values] = txData(data)
 
