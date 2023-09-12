@@ -511,6 +511,7 @@ output["statistics"] = statistics
 output["provider"] = args.provider
 output["schema"] = run.schema
 output["name"] = args.provider + " - " + run.schema
+output["errors"] = run.errors
 
 # this line is necessary in order to store the output to MongoDB
 jsonstr = json.dumps(output, indent=4)
