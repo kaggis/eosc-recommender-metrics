@@ -130,6 +130,18 @@ h1, .h1 {
   }
 }
 
+.error{
+  display: block;
+  margin:0.6rem;
+  text-align:center;
+  padding: 0.6rem;
+  color: white;
+  background-color: #d92550;
+  border-radius:0.2rem;
+  font-size: small;
+  font-weight: normal;
+}
+
 h2, .h2 {
   font-size: calc(1.301rem + 0.612vw);
 }
