@@ -229,8 +229,12 @@
                                                         <div class="widget-subheading">{{data.registered_users.doc}}</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers text-primary">{{data.registered_users.value}}
-                                                        </div>
+                                                        {% if data.registered_users.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %}    
+                                                            <div class="widget-numbers text-primary">{{data.registered_users.value}}
+                                                            </div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
                                             </div>
@@ -245,8 +249,12 @@
                                                         <div class="widget-subheading">{{data.anonymous_users.doc}}</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers text-warning">{{data.anonymous_users.value}}
-                                                        </div>
+                                                        {% if data.anonymous_users.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %}    
+                                                            <div class="widget-numbers text-warning">{{data.anonymous_users.value}}
+                                                            </div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
                                             </div>
@@ -261,8 +269,12 @@
                                                         <div class="widget-subheading">{{data['items'].doc}}</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers text-success">{{data['items'].value}}
-                                                        </div>
+                                                        {% if data['items'].value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %}    
+                                                            <div class="widget-numbers text-success">{{data['items'].value}}
+                                                            </div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
                                             </div>
@@ -278,8 +290,12 @@
                                                         </div>
                                                     </div>
                                                     <div class="widget-content-right">
+                                                        {% if data.recommended_items.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %}  
                                                         <div class="widget-numbers text-success">
                                                             {{data.recommended_items.value}}</div>
+                                                        {% endif %}
                                                     </div>
                                                 </div>
                                             </div>
@@ -301,8 +317,12 @@
                                                         </div>
                                                     </div>
                                                     <div class="widget-content-left">
-                                                        <div class="widget-heading">User Actions <span
-                                                                class="widget-numbers text-success">{{data.user_actions.value}}</span>
+                                                        <div class="widget-heading">User Actions
+                                                            {% if data.user_actions.value == None %}
+                                                                <span class="error">⚠️ Calculation Issue</span>
+                                                            {% else %} 
+                                                                <span class="widget-numbers text-success">{{data.user_actions.value}}</span>
+                                                            {%endif%}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -317,13 +337,18 @@
                                                         <div class="widget-heading">by Registered Users</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers text-primary">
-                                                            {{data.user_actions_registered.value}}</div>
+                                                        {% if data.user_actions.value == None %}
+                                                                <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %} 
+                                                            <div class="widget-numbers text-primary">
+                                                                {{data.user_actions_registered.value}}</div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
+                                                {% if data.user_actions_registered_perc.value %}
                                                 <div class="widget-subheading widget-content-right text-primary">
                                                     ({{data.user_actions_registered_perc.value}}%)</div>
-
+                                                {%endif%}    
                                             </div>
                                         </div>
                                     </li>
@@ -335,13 +360,18 @@
                                                         <div class="widget-heading">by Anonymous Users</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers sm text-warning">
-                                                            {{data.user_actions_anonymous.value}}</div>
+                                                        {% if data.user_actions_anonymous.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %} 
+                                                            <div class="widget-numbers sm text-warning">
+                                                                {{data.user_actions_anonymous.value}}</div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
+                                                {% if data.user_actions_anonymous_perc.value %}
                                                 <div class="widget-subheading widget-content-right text-warning">
                                                     ({{data.user_actions_anonymous_perc.value}}%)</div>
-
+                                                {%endif%}
                                             </div>
                                         </div>
                                     </li>
@@ -362,8 +392,12 @@
                                                     </div>
                                                     <div class="widget-content-left">
                                                         <div class="widget-heading">Items Viewed
-                                                            <span
-                                                                class="widget-numbers text-success">{{data.item_views.value}}</span>
+                                                            {% if data.item_views.value == None %}
+                                                                <span class="error">⚠️ Calculation Issue</span>
+                                                            {% else %} 
+                                                                <span
+                                                                    class="widget-numbers text-success">{{data.item_views.value}}</span>
+                                                            {%endif%}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -378,12 +412,18 @@
                                                         <div class="widget-heading">by Registered Users</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers text-primary">
-                                                            {{data.item_views_registered.value}}</div>
+                                                        {% if data.item_views_registered.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %} 
+                                                            <div class="widget-numbers text-primary">
+                                                                {{data.item_views_registered.value}}</div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
+                                                {% if data.item_views_registered_perc.value %}
                                                 <div class="widget-subheading widget-content-right text-primary">
                                                     ({{data.item_views_registered_perc.value}}%)</div>
+                                                {%endif%}
                                             </div>
                                         </div>
                                     </li>
@@ -395,12 +435,18 @@
                                                         <div class="widget-heading">by Anonymous Users</div>
                                                     </div>
                                                     <div class="widget-content-right">
-                                                        <div class="widget-numbers sm text-warning">
-                                                            {{data.item_views_anonymous.value}}</div>
+                                                        {% if data.item_views_registered.value == None %}
+                                                            <span class="error">⚠️ Calculation Issue</span>
+                                                        {% else %} 
+                                                            <div class="widget-numbers sm text-warning">
+                                                                {{data.item_views_anonymous.value}}</div>
+                                                        {%endif%}
                                                     </div>
                                                 </div>
+                                                {% if data.item_views_anonymous_perc.value %}
                                                 <div class="widget-subheading widget-content-right text-warning">
                                                     ({{data.item_views_anonymous_perc.value}}%)</div>
+                                                {%endif%}
 
                                             </div>
                                         </div>
@@ -450,8 +496,12 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.user_coverage.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success">
                                                 <span>{{data.user_coverage.value}}%</span></div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -490,8 +540,12 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.catalog_coverage.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success">
                                                 <span>{{data.catalog_coverage.value}}%</span></div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -532,10 +586,13 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.diversity_gini.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success"><span>
                                                     {{data.diversity_gini.value}}
-
                                                 </span></div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -583,7 +640,11 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.diversity.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success"><span>{{data.diversity.value}}</span></div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -624,8 +685,12 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.novelty.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success"><span>{{data.novelty.value}}</span>
                                             </div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -666,8 +731,12 @@
                                             </div>
                                         </div>
                                         <div class="widget-content-left">
+                                            {% if data.accuracy.value == None %}
+                                                <span class="error">⚠️ Calculation Issue</span>
+                                            {% else %} 
                                             <div class="widget-numbers text-success"><span>{{data.accuracy.value}}</span>
                                             </div>
+                                            {%endif%}
                                         </div>
                                     </div>
                                     <!--end wrapper-->
@@ -709,6 +778,15 @@
                                 <div class="mb-2 me-2 badge bg-secondary" data-toggle="tooltip" data-bs-toggle="tooltip"
                                     data-bs-placement="bottom" title="{{timestamp_data[0]}}T{{timestamp_data[1]}}"><i
                                         class="fa fa-calendar"></i> {{timestamp_data[0]}}</div>
+                                
+                                {% if data.errors and data.errors|length > 0 %}
+                                <div class="mb-2 me-2 badge bg-danger" data-toggle="tooltip" data-bs-toggle="tooltip"
+                                    data-bs-placement="bottom" title="
+                                    {% for item in data.errors %}
+                                    {{item}}{% if not loop.last %}, {% endif %}
+                                    {%endfor%}
+                                    "><i class="fa fa-warning"></i> Issues ({{data.errors|length}})</div>
+                                {%endif%}
                             </div>
                         </div>
                     </div>
