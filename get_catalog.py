@@ -64,7 +64,7 @@ def get_items_from_search(endpoint_url, category, provider, batch=100,
     cursor = ""
 
     while True:
-        url = "{}?rows={}&collection={}&q=*&qf=title".format(
+        url = "{}?rows={}&collection={}&q=*&qf=title&exact=false".format(
             endpoint_url, batch, category
         )
 
