@@ -7,6 +7,7 @@ import yaml
 import pymongo
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from inspect import getmembers, isfunction
 from pymongoarrow.api import find_pandas_all, aggregate_pandas_all
 import logging
@@ -227,6 +228,11 @@ run.user_actions_all = find_pandas_all(
     rsmetrics_db["user_actions"], match_ua
 ).iloc[:, 1:]
 
+# it seems that pymongoarrow returns pandas dataframe with
+# convert_dtypes=True, therefore None values are treated as np.nan
+# keep only None for further processing
+run.user_actions_all = run.user_actions_all.replace(np.nan, None)
+
 for _col_id in ['aai_uid', 'user_id', 'source_resource_id',
                 'target_resource_id']:
     if _col_id not in run.user_actions_all.columns:
@@ -289,6 +295,11 @@ else:
         [{"$match": match_rs},
          {"$unwind": "$resource_ids"}],
     ).iloc[:, 1:]
+
+# it seems that pymongoarrow returns pandas dataframe with
+# convert_dtypes=True, therefore None values are treated as np.nan
+# keep only None for further processing
+run.recommendations = run.recommendations.replace(np.nan, None)
 
 run.recommendations.rename(columns={'resource_ids': 'resource_id'},
                            inplace=True)
