@@ -19,6 +19,9 @@ app.config["RSEVAL_METRIC_DESC_DIR"] = os.environ.get(
 app.config["RSEVAL_STREAM_USER_ACTIONS_JOBNAME"] = os.environ.get(
     "RSEVAL_STREAM_USER_ACTIONS_JOBNAME"
 )
+app.config["RSEVAL_STREAM_RECOMMENDATIONS_JOBNAME"] = os.environ.get(
+    "RSEVAL_STREAM_RECOMMENDATIONS_JOBNAME"
+)
 app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"] = os.environ.get(
     "RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"
 )
@@ -343,6 +346,7 @@ def diag():
     stream_status = 0
     stream_ua = 0
     stream_mpdb = 0
+    stream_rec = 0
 
     # check mongo connectivity with a sensible timeout of 3sec
     mongo_check = PyMongo(
@@ -366,6 +370,12 @@ def diag():
             )
             if job_ua_info["statename"] == "RUNNING":
                 stream_ua = 1
+
+            job_rec_info = rpc_srv.supervisor.getProcessInfo(
+                app.config["RSEVAL_STREAM_RECOMMENDATIONS_JOBNAME"]
+            )
+            if job_rec_info["statename"] == "RUNNING":
+                stream_rec = 1
 
             job_mpdb_info = rpc_srv.supervisor.getProcessInfo(
                 app.config["RSEVAL_STREAM_MP_DB_EVENTS_JOBNAME"]
@@ -394,6 +404,9 @@ def diag():
                 "status": print_status(stream_status),
                 "RS_streaming_user_actions": {
                     "status": print_status(stream_ua)
+                },
+                "RS_streaming_recommendations": {
+                    "status": print_status(stream_rec)
                 },
                 "RS_streaming_mp_events": {
                     "status": print_status(stream_mpdb)
