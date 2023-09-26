@@ -1,5 +1,8 @@
 # Recommender Metrics Framework
 A framework for generating statistics, metrics, KPIs, and graphs for Recommender Systems
+<a href="https://eu.badgr.com/public/assertions/YWmU9yPvQxumUgd1vnPPSw">
+<img src="https://api.eu.badgr.io/public/assertions/YWmU9yPvQxumUgd1vnPPSw/image" width="4%"/>
+</a>
 
 <p align="center">
 <a href="https://github.com/ARGOeu/eosc-recommender-metrics/blob/ec222c3090892f33056086b8d30c18f713da519d/website/docs/static/img/flow.png">
