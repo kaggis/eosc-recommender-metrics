@@ -24,7 +24,7 @@ six==1.16.0
 soupsieve==2.3.2
 stomp.py==8.1.0
 surprise==0.1
-urllib3==1.26.9
+urllib3==1.26.17
 Werkzeug==2.2.3
 zipp==3.8.0
 flask-pymongo==2.3.0
