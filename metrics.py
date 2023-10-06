@@ -220,7 +220,12 @@ def item_views(object):
     # if the main page of the source and target paths are the same
     # then remove it because it's a walk around the service
     # items apart from services have not walk around implementations
-    _df = object.user_actions.copy()
+
+    _df = object.user_actions[
+            (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["target_resource_id"] != '-1')
+            & (object.user_actions["target_resource_id"] is not None)
+        ].copy()
 
     if object.schema == 'legacy':
         pattern = r"/services/([^/]+)/"
@@ -251,7 +256,11 @@ def item_views_registered(object):
     # if the main page of the source and target paths are the same
     # then remove it because it's a walk around the service
     # items apart from services have not walk around implementations
-    _df = object.user_actions.copy()
+    _df = object.user_actions[
+            (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["target_resource_id"] != '-1')
+            & (object.user_actions["target_resource_id"] is not None)
+        ].copy()
 
     if object.schema == 'legacy':
         pattern = r"/services/([^/]+)/"
@@ -835,6 +844,7 @@ def novelty(object):
     ua_serv_view = ua[
         (ua["source_resource_id"] != ua["target_resource_id"])
         & (ua["target_resource_id"] != -1)
+        & (ua["target_resource_id"] != '-1')
         & (ua["target_resource_id"] is not None)
         & (ua[object.id_field].find_registered(object.schema))
     ]
@@ -947,9 +957,8 @@ def accuracy(object):
 
 @metric("The Top 5 recommended items according to recommendations entries")
 @pass_on_error
-def top5_items_recommended(
-    object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
-):
+def top5_items_recommended(object, k=5,
+                           base="https://marketplace.eosc-portal.eu"):
     """
     Calculate the Top 5 recommended items according to
     the recommendations entries.
@@ -964,12 +973,7 @@ def top5_items_recommended(
     Item's info is being retrieved from the external source
     (i.e. each line forms: item_id, item_name, page_id)
     """
-    # keep recommendations with or without anonymous suggestions
-    # based on anonymous flag (default=False, i.e. ignore anonymous)
-    if anonymous:
-        recs = object.recommendations
-    else:
-        recs = object.recommendations[
+    recs = object.recommendations[
             (object.recommendations[object.id_field]
                 .find_registered(object.schema))
         ]
@@ -1030,13 +1034,12 @@ def top5_items_recommended(
     return topk_items
 
 
-@metric("The Top 5 ordered items according to user actions entries")
+@metric("The Top 5 viewed items according to user actions entries")
 @pass_on_error
-def top5_items_ordered(
-    object, k=5, base="https://marketplace.eosc-portal.eu", anonymous=False
-):
+def top5_items_viewed(object, k=5,
+                      base="https://marketplace.eosc-portal.eu"):
     """
-    Calculate the Top 5 ordered items according to user actions entries.
+    Calculate the Top 5 viewed items according to user actions entries.
     User actions with Target Pages that lead to unknown items (=-1)
     are being ignored.
     Return a list of list with the elements:
@@ -1048,28 +1051,32 @@ def top5_items_ordered(
         #       expressed in %, with or without anonymous,
         #       based on the function's flag
     """
-    # keep user actions with or without anonymous suggestions
-    # based on anonymous flag (default=False, i.e. ignore anonymous)
-    # user_actions with Target Pages that lead to unknown items (=-1)
-    # are being ignored
-    if anonymous:
-        uas = object.user_actions[
-            (object.user_actions["reward"] == 1.0)
-            & (object.user_actions["target_resource_id"] != -1)
-            & (object.user_actions["target_resource_id"] is not None)
-            & (object.user_actions[object.id_field]
-                .find_registered(object.schema))
-        ]
-    else:
-        uas = object.user_actions[
-            (object.user_actions["reward"] == 1.0)
-            & (object.user_actions["target_resource_id"] != -1)
+    uas = object.user_actions[
+            (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["target_resource_id"] != '-1')
             & (object.user_actions["target_resource_id"] is not None)
         ]
 
+    _df = uas.copy()
+
+    if object.schema == 'legacy':
+        pattern = r"/services/([^/]+)/"
+        _df = _df[_df["target_path"].str.match(pattern) &
+                  ~_df["target_path"].str.startswith("/services/c/")]
+
+    else:
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  r"|data-source|training|guideline|other)"
+        _df = _df[~_df["target_path"].str.match(pattern)]
+
+    _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
+    _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
+
+    uas = _df[_df['source'] != _df['target']]
+
     # item_count
     # group user_actions entries by item id and
-    # then count how many times each item has been suggested
+    # then count how many times each item has been viewed
     gr_item = uas.groupby(["target_resource_id"]).count()
 
     # create a dictionary of item_count in order to
@@ -1120,7 +1127,7 @@ def top5_items_ordered(
 
 
 # internal function
-def __top5_recommended(object, k=5, element='category', anonymous=False):
+def __top5_recommended(object, k=5, element='category'):
     """
     Calculate the Top 5 recommended elements according to
     the recommendations entries.
@@ -1133,12 +1140,7 @@ def __top5_recommended(object, k=5, element='category', anonymous=False):
         #       based on the function's flag
     Element's info is being retrieved from the marketplace_rs MongoDB source
     """
-    # keep recommendations with or without anonymous suggestions
-    # based on anonymous flag (default=False, i.e. ignore anonymous)
-    if anonymous:
-        recs = object.recommendations
-    else:
-        recs = object.recommendations[
+    recs = object.recommendations[
             (object.recommendations[object.id_field]
                 .find_registered(object.schema))
         ]
@@ -1218,9 +1220,9 @@ def __top5_recommended(object, k=5, element='category', anonymous=False):
 
 
 # internal function
-def __top5_ordered(object, element='category', k=5, anonymous=False):
+def __top5_viewed(object, element='category', k=5):
     """
-    Calculate the Top 5 ordered elements according to user actions entries.
+    Calculate the Top 5 viewed elements according to user actions entries.
     Return a list of list with the elements:
         #  (i) element id
         #  (ii) element name (according to element collection)
@@ -1230,22 +1232,28 @@ def __top5_ordered(object, element='category', k=5, anonymous=False):
         #       based on the function's flag
     Element's info is being retrieved from the marketplace_rs MongoDB source
     """
-    # keep user actions with or without anonymous suggestions
-    # based on anonymous flag (default=False, i.e. ignore anonymous)
-    # user_actions with Target Pages that lead to unknown items (=-1)
-    # are being ignored
-    if anonymous:
-        uas = object.user_actions[
-            (object.user_actions["reward"] == 1.0)
-            & (object.user_actions["target_resource_id"] != -1)
-            & (object.user_actions[object.id_field]
-                .find_registered(object.schema))
+    uas = object.user_actions[
+            (object.user_actions["target_resource_id"] != -1)
+            & (object.user_actions["target_resource_id"] != '-1')
+            & (object.user_actions["target_resource_id"] is not None)
         ]
+
+    _df = uas.copy()
+
+    if object.schema == 'legacy':
+        pattern = r"/services/([^/]+)/"
+        _df = _df[_df["target_path"].str.match(pattern) &
+                  ~_df["target_path"].str.startswith("/services/c/")]
+
     else:
-        uas = object.user_actions[
-            (object.user_actions["reward"] == 1.0)
-            & (object.user_actions["target_resource_id"] != -1)
-        ]
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  r"|data-source|training|guideline|other)"
+        _df = _df[~_df["target_path"].str.match(pattern)]
+
+    _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
+    _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
+
+    uas = _df[_df['source'] != _df['target']]
 
     # rename the column at a copy (not in place) for more readable processing
     _items = object.items.rename(columns={'id': 'target_resource_id'})
@@ -1325,28 +1333,26 @@ def __top5_ordered(object, element='category', k=5, anonymous=False):
 @metric("The Top 5 recommended categories according to recommendations entries"
         )
 @pass_on_error
-def top5_categories_recommended(object, k=5, anonymous=False):
-    return __top5_recommended(object, k=5, element='category', anonymous=False)
+def top5_categories_recommended(object, k=5):
+    return __top5_recommended(object, k=5, element='category')
 
 
 @metric("The Top 5 recommended scientific domains according to recommendations\
 entries")
 @pass_on_error
-def top5_scientific_domains_recommended(object, k=5, anonymous=False):
-    return __top5_recommended(object, k=5, element='scientific_domain',
-                              anonymous=False)
+def top5_scientific_domains_recommended(object, k=5):
+    return __top5_recommended(object, k=5, element='scientific_domain')
 
 
-@metric("The Top 5 ordered categories according to recommendations entries"
+@metric("The Top 5 viewed categories according to recommendations entries"
         )
 @pass_on_error
-def top5_categories_ordered(object, k=5, anonymous=False):
-    return __top5_ordered(object, k=5, element='category', anonymous=False)
+def top5_categories_viewed(object, k=5):
+    return __top5_viewed(object, k=5, element='category')
 
 
-@metric("The Top 5 ordered scientific domains according to recommendations\
+@metric("The Top 5 viewed scientific domains according to recommendations\
 entries")
 @pass_on_error
-def top5_scientific_domains_ordered(object, k=5, anonymous=False):
-    return __top5_ordered(object, k=5, element='scientific_domain',
-                          anonymous=False)
+def top5_scientific_domains_viewed(object, k=5):
+    return __top5_viewed(object, k=5, element='scientific_domain')
