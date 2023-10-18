@@ -348,12 +348,12 @@
                         <div class="col-md-6">
                             <div class="main-card mb-3 card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Top 5 ordered items</h5>
+                                    <h5 class="card-title">Top 5 viewed items</h5>
                                     <p>
-                                        {% if data.top5_items_ordered.value == None %}
+                                        {% if data.top5_items_viewed.value == None %}
                                             <span class="error">⚠️ Calculation Issue</span>
                                         {% else %}    
-                                        {% for item in data.top5_items_ordered.value %}
+                                        {% for item in data.top5_items_viewed.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
@@ -372,7 +372,7 @@
                                                                     style="width: {{item.orders.percentage}}%;"></div>
                                                                 <h6
                                                                     class="justify-content-center d-flex position-absolute w-100">
-                                                                    Ordered&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
+                                                                    viewed&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
                                                                     out of {{item.orders.of_total}}
                                                                 </h6>
                                                             </div>
@@ -468,12 +468,12 @@
                         <div class="col-md-6">
                             <div class="main-card mb-3 card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Top 5 ordered categories</h5>
+                                    <h5 class="card-title">Top 5 viewed categories</h5>
                                     <p>
-                                        {% if data.top5_categories_ordered.value == None %}
+                                        {% if data.top5_categories_viewed.value == None %}
                                         <span class="error">⚠️ Calculation Issue</span>
                                         {% else %}    
-                                        {% for item in data.top5_categories_ordered.value %}
+                                        {% for item in data.top5_categories_viewed.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
@@ -492,7 +492,7 @@
                                                                     style="width: {{item.orders.percentage}}%;"></div>
                                                                 <h6
                                                                     class="justify-content-center d-flex position-absolute w-100">
-                                                                    Ordered&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
+                                                                    viewed&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
                                                                     out of {{item.orders.of_total}}
                                                                 </h6>
                                                             </div>
@@ -588,12 +588,12 @@
                         <div class="col-md-6">
                             <div class="main-card mb-3 card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Top 5 ordered scientific domains</h5>
+                                    <h5 class="card-title">Top 5 viewed scientific domains</h5>
                                     <p>
-                                        {% if data.top5_scientific_domains_ordered.value == None %}
+                                        {% if data.top5_scientific_domains_viewed.value == None %}
                                         <span class="error">⚠️ Calculation Issue</span>
                                         {% else %}    
-                                        {% for item in data.top5_scientific_domains_ordered.value %}
+                                        {% for item in data.top5_scientific_domains_viewed.value %}
                                     <div class="card-shadow-info mb-3 widget-chart widget-chart2 text-start card">
                                         <div class="row">
                                             <div class="widget-content col-md-10">
@@ -612,7 +612,7 @@
                                                                     style="width: {{item.orders.percentage}}%;"></div>
                                                                 <h6
                                                                     class="justify-content-center d-flex position-absolute w-100">
-                                                                    Ordered&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
+                                                                    viewed&nbsp;<b>{{item.orders.value}}</b>&nbsp;times
                                                                     out of {{item.orders.of_total}}
                                                                 </h6>
                                                             </div>

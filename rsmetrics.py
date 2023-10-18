@@ -9,7 +9,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from inspect import getmembers, isfunction
-from pymongoarrow.api import find_pandas_all, aggregate_pandas_all
+from pymongoarrow.api import aggregate_pandas_all
 import logging
 
 # local lib
@@ -224,9 +224,11 @@ match_rs = {**match_query, "provider": args.provider}
 # panda data frames using functions such as find_pandas_all and
 # aggregate_pandas_all
 logging.info("Reading user actions...")
-run.user_actions_all = find_pandas_all(
-    rsmetrics_db["user_actions"], match_ua
-).iloc[:, 1:]
+
+run.user_actions_all = pd.DataFrame(
+    list(rsmetrics_db["user_actions"].find(match_ua,
+                                           {"_id": 0}))
+)
 
 # it seems that pymongoarrow returns pandas dataframe with
 # convert_dtypes=True, therefore None values are treated as np.nan
@@ -290,11 +292,12 @@ if args.provider == "athena":
     ).iloc[:, 1:-1]
 
 else:
-    run.recommendations = aggregate_pandas_all(
-        rsmetrics_db["recommendations"],
-        [{"$match": match_rs},
-         {"$unwind": "$resource_ids"}],
-    ).iloc[:, 1:]
+
+    run.recommendations = \
+        pd.DataFrame(list(
+            rsmetrics_db["recommendations"].aggregate([
+                {"$match": match_rs},
+                {"$unwind": "$resource_ids"}])))
 
 # it seems that pymongoarrow returns pandas dataframe with
 # convert_dtypes=True, therefore None values are treated as np.nan
@@ -418,6 +421,19 @@ try:
         pd.to_datetime(run.user_actions_all["timestamp"])
     )
 
+    # services ids are returned as float with trailing .0,
+    # so they are converted to str(int))
+    # also ignore None values by assign them '0' and then back to None
+    if not args.legacy:
+        for res_id_type in ['source_resource_id', 'target_resource_id']:
+            run.user_actions_all[res_id_type] = \
+                run.user_actions_all[res_id_type].fillna(0).astype(str)
+            run.user_actions_all[res_id_type] = \
+                run.user_actions_all[res_id_type].apply(lambda x: x[:-2] if
+                                                        x[-2:] == '.0' else x)
+            run.user_actions_all[res_id_type] = \
+                run.user_actions_all[res_id_type].replace('0', None)
+
     # remove user actions when item does not exist in items' catalog
     # not-known items (i.e. -1 or None) are not excluded
     # (there is no need to do this for users, since users are already
@@ -426,12 +442,12 @@ try:
     # an string (However, [int] -1 or None indicates not known)
     run.user_actions = run.user_actions_all[
         (run.user_actions_all["source_resource_id"]
-         .isin(run.items["id"].tolist() + [-1, None]))
+         .isin(run.items["id"].tolist() + ['-1', -1, None]))
     ]
 
     run.user_actions = run.user_actions[
         (run.user_actions["target_resource_id"]
-         .isin(run.items["id"].tolist() + [-1, None]))
+         .isin(run.items["id"].tolist() + ['-1', -1, None]))
     ]
 
     run.recommendations["timestamp"] = (
@@ -455,7 +471,7 @@ try:
     # and -1 for backward compatibility
     run.recommendations = run.recommendations[
         run.recommendations["resource_id"]
-        .isin(run.items["id"].tolist() + [-1, None])
+        .isin(run.items["id"].tolist() + ['-1', -1, None])
     ]
 
 except Exception as e:
