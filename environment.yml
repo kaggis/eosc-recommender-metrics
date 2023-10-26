@@ -39,7 +39,7 @@ dependencies:
     - natsort==8.1.0
     - numpy==1.22.3
     - pandas==1.4.2
-    - pyarrow==10.0.1
+    - pyarrow==11.0.0
     - pymongo==4.1.0
     - pymongoarrow==0.7.0
     - python-dateutil==2.8.2
@@ -51,7 +51,7 @@ dependencies:
     - six==1.16.0
     - soupsieve==2.3.2
     - stomp-py==8.1.0
-    - urllib3==1.26.17
+    - urllib3==1.26.18
     - websocket-client==1.4.2
     - werkzeug==2.2.3
     - zipp==3.8.0
