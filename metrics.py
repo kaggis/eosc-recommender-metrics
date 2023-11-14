@@ -129,22 +129,22 @@ def anonymous_users(object):
     return users(object)-registered_users(object)
 
 
-@statistic("The total number of unique published items in the system")
+@statistic("The number of unique published items in the evaluated RS")
 @pass_on_error
 def items(object):
     """
-    Calculate the total number of unique items
+    Calculate the number of unique items
     found in Pandas DataFrame object items (if provided)
     or user_actions otherwise (from both Source and Target item)
     """
     return int(object.items["id"].nunique())
 
 
-@statistic("The total number of recommended items")
+@statistic("The number of recommended items in the evaluated RS")
 @pass_on_error
 def recommended_items(object):
     """
-    Calculate the total number of recommended items
+    Calculate the number of recommended items
     found in Pandas DataFrame object recommendations
     """
     return len(object.recommendations.index)
@@ -152,42 +152,52 @@ def recommended_items(object):
 
 @statistic("The total number of user actions")
 @pass_on_error
-def user_actions(object):
+def user_actions_all(object):
     """
     Calculate the total number of user_actions
+    found in Pandas DataFrame object user_actions
+    """
+    return len(object.user_actions_all.index)
+
+
+@statistic("The number of filtered user actions")
+@pass_on_error
+def user_actions(object):
+    """
+    Calculate the number of filtered user_actions
     found in Pandas DataFrame object user_actions
     """
     return len(object.user_actions.index)
 
 
-@statistic("The total number of user actions occurred by registered users")
+@statistic("The number of filtered user actions occurred by registered users")
 @pass_on_error
 def user_actions_registered(object):
     """
-    Calculate the total number of user_actions occurred by registered users
+    Calculate the number of filtered user_actions occurred by registered users
     found in Pandas DataFrame object user_actions
     """
     return len(object.user_actions[object.user_actions["registered"]].index)
 
 
-@statistic("The total number of user actions occurred by anonymous users")
+@statistic("The number of filtered user actions occurred by anonymous users")
 @pass_on_error
 def user_actions_anonymous(object):
     """
-    Calculate the total number of user_actions occurred by anonymous users
+    Calculate the number of filtered user_actions occurred by anonymous users
     found in Pandas DataFrame object user_actions
     """
     return user_actions(object) - user_actions_registered(object)
 
 
 @statistic(
-    "The percentage (%) of user actions occurred by registered users to the "
-    "total user actions"
+    "The percentage (%) of filtered user actions occurred by registered users "
+    "to the total user actions"
 )
 @pass_on_error
 def user_actions_registered_perc(object):
     """
-    Calculate the percentage (%) of user actions occurred
+    Calculate the percentage (%) of filtered user actions occurred
     by registered users to the total user actions
     found in Pandas DataFrame object user_actions (in two decimals)
     """
@@ -196,13 +206,13 @@ def user_actions_registered_perc(object):
 
 
 @statistic(
-    "The percentage (%) of user actions occurred by anonymous users to the "
-    "total user actions"
+    "The percentage (%) of filtered user actions occurred by anonymous users "
+    "to the total user actions"
 )
 @pass_on_error
 def user_actions_anonymous_perc(object):
     """
-    Calculate the percentage (%) of user actions occurred
+    Calculate the percentage (%) of filtered user actions occurred
     by anonymous users to the total user actions
     found in Pandas DataFrame object user_actions (in two decimals)
     """
@@ -211,9 +221,45 @@ def user_actions_anonymous_perc(object):
 
 @statistic("The total number of item views by the users")
 @pass_on_error
-def item_views(object):
+def item_views_all(object):
     """
     Calculate the total number of user_actions led to item views
+    found in Pandas DataFrame object user_actions
+    """
+    # if target path is the search page remove it
+    # if the main page of the source and target paths are the same
+    # then remove it because it's a walk around the service
+    # items apart from services have not walk around implementations
+
+    _df = object.user_actions_all[
+            (object.user_actions_all["target_resource_id"] != -1)
+            & (object.user_actions_all["target_resource_id"] != '-1')
+            & (object.user_actions_all["target_resource_id"] is not None)
+        ].copy()
+
+    if object.schema == 'legacy':
+        pattern = r"/services/([^/]+)/"
+        _df = _df[_df["target_path"].str.match(pattern) &
+                  ~_df["target_path"].str.startswith("/services/c/")]
+
+    else:
+        pattern = r"search%2F(?:all|dataset|software|service" + \
+                  r"|data-source|training|guideline|other)"
+        _df = _df[~_df["target_path"].str.match(pattern)]
+
+    _df['source'] = _df['source_path'].str.extract(r"/services/(.*?)/")
+    _df['target'] = _df['target_path'].str.extract(r"/services/(.*?)/")
+
+    _df = _df[_df['source'] != _df['target']]
+
+    return len(_df.index)
+
+
+@statistic("The number of filtered item views by the users")
+@pass_on_error
+def item_views(object):
+    """
+    Calculate the number of filtered user_actions led to item views
     found in Pandas DataFrame object user_actions
     """
     # if target path is the search page remove it
@@ -245,11 +291,11 @@ def item_views(object):
     return len(_df.index)
 
 
-@statistic("The total number of item views by the registered users")
+@statistic("The number of item views by the registered users")
 @pass_on_error
 def item_views_registered(object):
     """
-    Calculate the total number of user_actions led by registered users
+    Calculate the number of user_actions led by registered users
     led to item views found in Pandas DataFrame object user_actions
     """
     # if target path is the search page remove it
@@ -282,11 +328,11 @@ def item_views_registered(object):
     return len(_df.index)
 
 
-@statistic("The total number of item views by the anonymous users")
+@statistic("The number of item views by the anonymous users")
 @pass_on_error
 def item_views_anonymous(object):
     """
-    Calculate the total number of user_actions led by anonymous users
+    Calculate the number of user_actions led by anonymous users
     led to item views found in Pandas DataFrame object user_actions
     """
     return item_views(object) - item_views_registered(object)
