@@ -318,10 +318,10 @@
                                                     </div>
                                                     <div class="widget-content-left">
                                                         <div class="widget-heading">User Actions
-                                                            {% if data.user_actions.value == None %}
+                                                            {% if data.user_actions_all.value == None or data.user_actions.value == None %}
                                                                 <span class="error">⚠️ Calculation Issue</span>
                                                             {% else %} 
-                                                                <span class="widget-numbers text-success">{{data.user_actions.value}}</span>
+                                                                <span class="widget-numbers text-success">{{data.user_actions.value}}  <span style="color:#4e555c;">/</span> {{data.user_actions_all.value}}</span>
                                                             {%endif%}
                                                         </div>
                                                     </div>
@@ -392,11 +392,11 @@
                                                     </div>
                                                     <div class="widget-content-left">
                                                         <div class="widget-heading">Item Views
-                                                            {% if data.item_views.value == None %}
+                                                            {% if data.item_views_all.value == None or data.item_views.value == None%}
                                                                 <span class="error">⚠️ Calculation Issue</span>
                                                             {% else %} 
                                                                 <span
-                                                                    class="widget-numbers text-success">{{data.item_views.value}}</span>
+                                                                    class="widget-numbers text-success">{{data.item_views.value}}  <span style="color:#4e555c;">/</span> {{data.item_views_all.value}}</span>
                                                             {%endif%}
                                                         </div>
                                                     </div>
