@@ -77,11 +77,20 @@ optional.add_argument(
 optional.add_argument(
     "-p",
     "--provider",
-    metavar=("DIRPATH"),
-    help=("source of the data based on providers specified "
+    metavar=("STRING"),
+    help=("name of the provider-rs specified "
           "in the configuration file"),
     nargs="?",
     default="marketplace_rs",
+    type=str,
+)
+optional.add_argument(
+    "-t",
+    "--tag",
+    metavar=("STRING"),
+    help=("tag results e.g. year-month"),
+    nargs="?",
+    default="",
     type=str,
 )
 optional.add_argument(
@@ -347,9 +356,16 @@ run.items = pd.DataFrame(
                      {"created_on": None}]},
             {"$or": [{"deleted_on": {"$gte": args.starttime}},
                      {"deleted_on": None}]},
+            {"timestamp": {"$lte": args.endtime}} if args.endtime else {},
+            {"timestamp": {"$gte": args.starttime}} if args.starttime else {},
         ]},
         {"_id": 0}))
 )
+
+# from duplicates keep the latest entry
+run.items = run.items.sort_values(by='timestamp', ascending=False)
+run.items = run.items.drop_duplicates(subset='id', keep='first')
+
 
 if not args.legacy:
     run.items['id'] = run.items['id'].astype(str)
@@ -537,15 +553,20 @@ output["metrics"] = metrics
 output["statistics"] = statistics
 output["provider"] = args.provider
 output["schema"] = run.schema
-output["name"] = args.provider + " - " + run.schema
+
+if args.tag is not None:
+    output["name"] = args.provider + " - " + args.tag
+else:
+    output["name"] = args.provider
+
 output["errors"] = run.errors
 
 # this line is necessary in order to store the output to MongoDB
 jsonstr = json.dumps(output, indent=4)
 
 # keep one metrics collection per schema
-rsmetrics_db["metrics"].delete_many({"$and": [{"provider": args.provider},
-                                              {"schema": run.schema}]})
+rsmetrics_db["metrics"].delete_many({"name": output["name"]})
+
 rsmetrics_db["metrics"].insert_one(output)
 
 # result in stdout console (not in logs)

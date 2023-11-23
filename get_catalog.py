@@ -4,6 +4,7 @@ import sys
 import csv
 import argparse
 from pymongo import MongoClient
+from datetime import datetime
 
 
 def prep_url(category, item):
@@ -41,6 +42,9 @@ def get_items_from_search(endpoint_url, category, provider, batch=100,
         three-item list containing:
         [item_id, item_name, item_path]
     """
+
+    # save items with timestamp
+    timestamp = datetime.utcnow()
 
     # cap batch at 100 items due to the search service max row limit per page
     if batch > 100:
@@ -90,7 +94,8 @@ def get_items_from_search(endpoint_url, category, provider, batch=100,
                 "created_on": None,
                 "deleted_on": None,
                 "type": category,
-                "ingestion": "batch"
+                "ingestion": "batch",
+                "timestamp": timestamp
             }
 
             result["provider"] = provider
@@ -171,7 +176,7 @@ def ouput_items_to_mongo(items, mongo_uri, category, provider,
 
     result_del = []
 
-    # by default clear previous results
+    # by default NOT clear previous results
     if clear_prev:
         result_del = col.delete_many(
             {
@@ -186,7 +191,8 @@ def ouput_items_to_mongo(items, mongo_uri, category, provider,
     mc.close()
 
     # return number of inserted items
-    return (len(result.inserted_ids), result_del.deleted_count)
+    return (len(result.inserted_ids),
+            result_del.deleted_count if result_del else 0)
 
 
 # Main logic
@@ -213,7 +219,8 @@ def main(args=None):
     if args.datastore:
 
         result_num, result_clear = ouput_items_to_mongo(
-            items, args.datastore, args.category, args.provider
+            items, args.datastore, args.category, args.provider,
+            clear_prev=False
         )
 
         # if previous items have been cleared display message
