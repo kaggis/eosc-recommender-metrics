@@ -58,8 +58,13 @@ A framework for generating statistics, metrics, KPIs, and graphs for Recommender
 ./rsmetrics.py -p athena # same procedure as the first one for 'athena' provider
 ```
 
+10. A typical `rsmetrics.py` command for a monthly report, would be:
+```bash
+./rsmetrics.py -p provider -s $(date +"%Y-%m-01") -e $(date +"%Y-%m-%d") -t "$(date +"%B %Y")"
+```
+
 ### Usage of the Streaming System
-10. Run from terminal `./rs-stream.py` in order to listen to the stream for new data, process them, and store them in the `Datastore`, concerning that particular provider:
+11. Run from terminal `./rs-stream.py` in order to listen to the stream for new data, process them, and store them in the `Datastore`, concerning that particular provider:
 ```bash
 ./rs-stream.py -a username:password -q host:port -t user_actions -d ""mongodb://localhost:27017/datastore"" -p provider_name
 ```
