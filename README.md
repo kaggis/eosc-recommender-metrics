@@ -165,4 +165,8 @@ You can override this by editing the `.env` file inside the `/webservice` folder
 
 _Tested with python 3.9_
 
-
+#### Monitor for entries in the MongoDB collections
+A typical example that counts the documents found in `user_actions`, `recommendations`, and `resources` for 1 day ago would be:
+```bash
+./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')"
+```
