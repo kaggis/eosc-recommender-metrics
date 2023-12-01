@@ -9,9 +9,9 @@ from datetime import datetime
 
 def prep_url(category, item):
     if category == "service":
-        return "services/{}".format(item["slug"])
+        return "services/{}".format(item["pid"])
     elif category == "data_source":
-        return "services/{}".format(item["id"])
+        return "services/{}".format(item["pid"])
     elif category == "training":
         return "trainings/{}".format(item["id"])
     elif category == "guideline":
