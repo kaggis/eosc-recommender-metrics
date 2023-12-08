@@ -197,10 +197,8 @@ def main(args):
     if args.email:
         smtp_info = parse_smtp_uri(args.smtp_uri)
         send_email(args.sender_email, args.recipients,
-                   'RSeval Report from {} to {}'.format(args.starttime
-                                                        .strftime("%Y-%m-%d"),
-                                                        args.endtime
-                                                        .strftime("%Y-%m-%d")),
+                   'RSeval Report for {}'.format(args.starttime
+                                                 .strftime("%Y-%m-%d")),
                    logger.text, smtp_info)
 
 
