@@ -177,3 +177,16 @@ E-mail send over SMTP for the above example:
 
 ```
 
+#### Export Capacity information for entries in the MongoDB collections
+A typical example that counts the documents found in `user_actions`, `recommendations`, and `resources` for 1 year ago would be:
+```bash
+./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')" --capacity
+```
+which will return results in CSV format of `year,month,user_actions,recommendations`
+
+Additionally, capacity can be plotted:
+
+```bash
+./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')" --capacity --plot
+```
+

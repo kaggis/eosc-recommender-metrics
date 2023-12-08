@@ -8,6 +8,10 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from urllib.parse import urlparse
+from dateutil.relativedelta import relativedelta
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.dates import DateFormatter
 
 # establish basic logging
 logging.basicConfig(
@@ -46,6 +50,77 @@ def send_email(sender_email, recipients, subject, body, smtp_info):
         server.sendmail(sender_email, recipients, message.as_string())
 
     print("Email sent successfully.")
+
+
+def plot(df):
+
+    df['date'] = pd.to_datetime(df[['year', 'month']].assign(day=1))
+
+    # Create subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+    # Plot for User Actions
+    ax1.plot(df['date'], df['user_actions'], marker='o', color='blue')
+    ax1.set_ylabel('Count')
+    ax1.grid(True)
+    ax1.set_title('Total User Actions')
+
+    # Plot for Recommendations
+    ax2.plot(df['date'], df['recommendations'], marker='o', color='orange')
+    ax2.set_ylabel('Count')
+    ax2.grid(True)
+    ax2.set_title('Total Recommendations')
+
+    # Format x-axis ticks as YEAR-MONTH
+    date_format = DateFormatter('%Y-%m')
+    plt.gca().xaxis.set_major_formatter(date_format)
+    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(
+                                      len(df['date'].unique())))
+
+    # Rotate x-axis labels for better visibility
+    plt.gcf().autofmt_xdate()
+
+    min_date = df['date'].min().strftime('%Y_%m')
+    max_date = df['date'].max().strftime('%Y_%m')
+
+    # Show the plot
+    plt.savefig('capacity_{}_{}.pdf'.format(min_date, max_date),
+                bbox_inches='tight')
+
+
+def capacity(args, db):
+
+    data = []
+
+    current = args.starttime
+    while current <= args.endtime:
+        current = current.replace(day=1)
+        next_current = current + relativedelta(months=1)
+
+        time_filter = {}
+        time_filter["timestamp"] = {}
+        time_filter["timestamp"]["$gte"] = current
+        time_filter["timestamp"]["$lt"] = next_current
+
+        data.append([current.year,
+                     current.month,
+                     db["user_actions"].count_documents(time_filter),
+                     db["recommendations"].count_documents(time_filter)])
+
+        # Move to the next month
+        current = next_current
+
+    df = pd.DataFrame(data, columns=['year', 'month', 'user_actions',
+                                     'recommendations'])
+
+    # Set display options to show all rows and columns
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+
+    print(df)
+
+    if args.plot:
+        plot(df)
 
 
 def main(args):
@@ -89,6 +164,10 @@ def main(args):
 
     logger.info("Searching for the period {} - {}".format(args.starttime,
                                                           args.endtime))
+
+    if args.capacity:
+        capacity(args, rsmetrics_db)
+        return
 
     for col in args.collection:
         try:
@@ -199,6 +278,16 @@ if __name__ == "__main__":
                              help='Sender email address')
     email_group.add_argument('recipients', nargs='*',
                              help='Recipient email addresses (at least one)')
+
+    # Add optional argument to enable email-related arguments
+    parser.add_argument('--capacity', action='store_true',
+                        help='Export output for capacity info. CSV format of \
+                              YEAR, MONTH, TOTAL USER ACTIONS, TOTAL \
+                              RECOMMENDATIONS')
+
+    capacity_group = parser.add_argument_group('Capacity Options')
+    capacity_group.add_argument('--plot', action='store_true',
+                                help='Plot to file')
 
     # Pass the arguments to main method
     sys.exit(main(parser.parse_args()))
