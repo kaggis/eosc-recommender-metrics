@@ -170,3 +170,10 @@ A typical example that counts the documents found in `user_actions`, `recommenda
 ```bash
 ./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')"
 ```
+
+E-mail send over SMTP for the above example:
+```bash
+./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')" --email "smtp://server:port" sender@domain recipient1@domain recipient2@domain
+
+```
+
