@@ -121,6 +121,13 @@ optional.add_argument(
 )
 
 optional.add_argument(
+    "--ignore-timestamp",
+    help=("Enable to perform calculations without checking if items are \
+within the requested datetime range"),
+    action="store_true",
+)
+
+optional.add_argument(
     "-h", "--help", action="help", help="show this help message and exit"
 )
 optional.add_argument(
@@ -349,17 +356,22 @@ else:
 
 logging.info("Reading items...")
 run.items = pd.DataFrame(
-    list(rsmetrics_db["resources"].find({
-        "$and": [
-            {"provider": args.provider},
-            {"$or": [{"created_on": {"$lte": args.endtime}},
-                     {"created_on": None}]},
-            {"$or": [{"deleted_on": {"$gte": args.starttime}},
-                     {"deleted_on": None}]},
-            {"timestamp": {"$lte": args.endtime}} if args.endtime else {},
-            {"timestamp": {"$gte": args.starttime}} if args.starttime else {},
-        ]},
-        {"_id": 0}))
+    list(rsmetrics_db["resources"].find(
+        {
+            "$and": [
+                {"provider": args.provider},
+                {"$or": [{"created_on": {"$lte": args.endtime}},
+                         {"created_on": None}]},
+                {"$or": [{"deleted_on": {"$gte": args.starttime}},
+                         {"deleted_on": None}]},
+                {"timestamp": {"$lte": args.endtime}}
+                if (args.endtime and not args.ignore_timestamp) else {},
+                {"timestamp": {"$gte": args.starttime}}
+                if (args.starttime and not args.ignore_timestamp) else {},
+            ]
+        },
+        {"_id": 0}
+    ))
 )
 
 # from duplicates keep the latest entry
