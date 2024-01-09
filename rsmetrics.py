@@ -495,6 +495,8 @@ try:
                                                [-1, None])
     ]
 
+    run.recommendations["resource_id"] =\
+        run.recommendations["resource_id"].astype(str)
     # we have added None which is the new state of unkown resources
     # and -1 for backward compatibility
     run.recommendations = run.recommendations[
