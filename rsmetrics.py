@@ -360,6 +360,8 @@ run.items = pd.DataFrame(
         {
             "$and": [
                 {"provider": args.provider},
+                {"type": {"$in":
+                          config['service']['category'][args.provider]}},
                 {"$or": [{"created_on": {"$lte": args.endtime}},
                          {"created_on": None}]},
                 {"$or": [{"deleted_on": {"$gte": args.starttime}},
