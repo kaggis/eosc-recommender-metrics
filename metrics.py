@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import pandas as pd
 import numpy as np
-import re
 
 
 class Runtime:
@@ -1003,8 +1002,7 @@ def accuracy(object):
 
 @metric("The Top 5 recommended items according to recommendations entries")
 @pass_on_error
-def top5_items_recommended(object, k=5,
-                           base="https://marketplace.eosc-portal.eu"):
+def top5_items_recommended(object, k=5):
     """
     Calculate the Top 5 recommended items according to
     the recommendations entries.
@@ -1052,6 +1050,20 @@ def top5_items_recommended(object, k=5,
                             .items["id"]
                             .isin([item[0]]))])
 
+        if _df_item["type"].item() in ["service", "data_source"]:
+            url = "https://marketplace.eosc-portal.eu/{}".format(
+                  str(_df_item["path"].item()))
+        elif _df_item["type"].item() in ["training"]:
+            url = "https://search.marketplace.eosc-portal.eu/{}".format(
+                  str(_df_item["path"].item()))
+        else:
+            url = "https://explore.eosc-portal.eu/search/{}?softwareId={}"\
+                  .format(
+                      _df_item["type"].item(), str(_df_item["id"].item())[
+                          len("50|"):].lstrip() if
+                      str(_df_item["id"].item()).startswith("50|") else
+                      str(_df_item["id"].item()))
+
         # append a list with the elements:
         #   (i) item id
         #  (ii) item name
@@ -1064,11 +1076,7 @@ def top5_items_recommended(object, k=5,
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url": re.sub(r'(?<!https:)//', '/', '{}{}'.format(
-                                  base if 'services/' in
-                                  str(_df_item["path"].item()) else
-                                  'https://search.marketplace.eosc-portal.eu/',
-                                  str(_df_item["path"].item()))),
+                "item_url": url,
                 "recommendations": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(recs.index), 2),
@@ -1082,8 +1090,7 @@ def top5_items_recommended(object, k=5,
 
 @metric("The Top 5 viewed items according to user actions entries")
 @pass_on_error
-def top5_items_viewed(object, k=5,
-                      base="https://marketplace.eosc-portal.eu"):
+def top5_items_viewed(object, k=5):
     """
     Calculate the Top 5 viewed items according to user actions entries.
     User actions with Target Pages that lead to unknown items (=-1)
@@ -1144,6 +1151,21 @@ def top5_items_viewed(object, k=5,
     for item in l_item:
         # get items's info from dataframe
         _df_item = object.items[object.items["id"].isin([item[0]])]
+
+        if _df_item["type"].item() in ["service", "data_source"]:
+            url = "https://marketplace.eosc-portal.eu/{}".format(
+                  str(_df_item["path"].item()))
+        elif _df_item["type"].item() in ["training"]:
+            url = "https://search.marketplace.eosc-portal.eu/{}".format(
+                  str(_df_item["path"].item()))
+        else:
+            url = "https://explore.eosc-portal.eu/search/{}?softwareId={}"\
+                  .format(
+                      _df_item["type"].item(), str(_df_item["id"].item())[
+                          len("50|"):].lstrip() if
+                      str(_df_item["id"].item()).startswith("50|") else
+                      str(_df_item["id"].item()))
+
         # append a list with the elements:
         #   (i) item id
         #  (ii) item name
@@ -1156,11 +1178,7 @@ def top5_items_viewed(object, k=5,
             {
                 "item_id": item[0],
                 "item_name": str(_df_item["name"].item()),
-                "item_url": re.sub(r'(?<!https:)//', '/', '{}{}'.format(
-                                  base if 'services/' in
-                                  str(_df_item["path"].item()) else
-                                  'https://search.marketplace.eosc-portal.eu/',
-                                  str(_df_item["path"].item()))),
+                "item_url": url,
                 "orders": {
                     "value": item[1],
                     "percentage": round(100 * item[1] / len(uas.index), 2),
