@@ -11,6 +11,13 @@ The Recommender System (RS) is a novel component of the EOSC Portal meant to imp
 
 ![Flow](static/img/flow.png)
 
+### Reports
+Presently, we provide daily assessments: 
+* for the Marketplace RS by utilizing service resources, and 
+* for the Online Engine through training and software resources.
+
+Both evaluations occur on a daily basis, with resource retrieval facilitated by the get_catalog.py Python module. While service data is obtained daily, the acquisition of training and software data is a manual, best-effort process owing to the extensive size of the dataset.
+
 ## Components Functionality
 
 ### Preprocessor
