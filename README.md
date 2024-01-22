@@ -190,3 +190,5 @@ Additionally, capacity can be plotted:
 ./monitor.py -d "mongodb://localhost:27017/rsmetrics" -s "$(date -u -d '1 day ago' '+%Y-%m-%d')" -e "$(date -u '+%Y-%m-%d')" --capacity --plot
 ```
 
+## Deployment docs
+Installation and configuration documents can be found [here](docs).
