@@ -4,7 +4,7 @@
 providers:
    - name: marketplace_rs
      db: "mongodb://localhost:27017/recommender_dev"
-   - name: athena
+   - name: content-based engine
      db: "mongodb://localhost:27017/athena_dev"
    - name: online_engine
      db: ""
@@ -23,6 +23,6 @@ service:
     # and also in metrics calculations where service is considered
     published: true
     category:
-       athena: [service]
+       content-based engine: [service]
        marketplace_rs: [service]
        online_engine: [training, data_source]

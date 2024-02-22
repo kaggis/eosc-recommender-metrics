@@ -14,7 +14,8 @@ from datetime import datetime
 # mapping recommendations
 rec_map = {'publications': 'publication', 'datasets': 'dataset',
            'software': 'software', 'services': 'service',
-           'trainings': 'training', 'other_research_product': 'other'}
+           'trainings': 'training', 'other_research_product': 'other',
+           'similar_services': 'service'}
 
 # Streaming connector using stomp protocol to ingest data from rs databus
 
