@@ -10,7 +10,10 @@ sidebar_position: 3
 The number of user clicks through recommendations panels divided by the total times recommendation panels were presented to users.
 
 ## Description
-The number of user clicks through recommendations panels divided by the total times recommendation panels were presented to users. Takes into account all historical data of user actions.<p>The metric is expressed by the formula: $$Click-Through Rate=\frac{clicks}{views}$$</p>
+The number of user clicks through recommendations panels divided by the total times recommendation panels were presented to users. Takes into account all historical data of user actions.
+<p>
+The metric is expressed by the formula: $$Click-Through Rate=\frac{clicks}{views}$$
+</p>
 
 ## Output
 
@@ -29,9 +32,9 @@ A value of 0 indicates that no clicks through recommendations panels occurred.
 ## Process Flow:
 * ### Retrieve user actions with recommendation panel
 Get only the user actions that present a recommendation panel to the user in the source page. Those are actions with the following source paths:
-  * /services
-  * /services
-  * /services/c/{any category name}
+  * `/services`
+  * `/services`
+  * `/services/c/{any category name}`
 * ### Count user actions with recommendation panel
 Count the items in the above list as they represent the times recommendations panels were presented to the users of the portal
 * ### Filter list

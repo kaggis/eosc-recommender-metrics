@@ -10,8 +10,10 @@ sidebar_position: 5
 Measures Recommendations' diversity. The entropy is 0 when a single item is always chosen or recommended, and log n when n items are chosen or recommended equally often.
 
 ## Description
-The diversity ($$H$$) of the recommendations according to Shannon Entropy. The entropy is 0 when a single item is always chosen or recommended, and log(n) when n items are chosen or recommended equally often (see [book](https://link.springer.com/10.1007/978-1-4939-7131-2_110158)). Generally, the Shannon Entropy mathematical expression is defined as: $$H=-\sum_{i=1}^{n}p(i)\log_2 p(i)$$<p>
-In RS Metrics the formula is determined as: $$Diversity=-\sum_{i=1}^{services}\left(\frac{count(i)}{recommendations}\right)\log_2 \left(\frac{count(i)}{recommendations}\right)$$</p>
+The diversity ($$H$$) of the recommendations according to Shannon Entropy. The entropy is 0 when a single item is always chosen or recommended, and log(n) when n items are chosen or recommended equally often (see [book](https://link.springer.com/10.1007/978-1-4939-7131-2_110158)). Generally, the Shannon Entropy mathematical expression is defined as: $$H=-\sum_{i=1}^{n}p(i)\log_2 p(i)$$
+<p>
+In RS Metrics the formula is determined as: $$Diversity=-\sum_{i=1}^{services}\left(\frac{count(i)}{recommendations}\right)\log_2 \left(\frac{count(i)}{recommendations}\right)$$
+</p>
 
 ## Output
 

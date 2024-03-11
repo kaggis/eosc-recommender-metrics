@@ -11,9 +11,11 @@ Measures Recommendations' accuracy based on users' access to the services. A val
 
 ## Description
 The accuracy $$(A$$ of the recommendations is based on users' access to the services. A value of 1, indicates that the RS model got all the predictions right, and a value of 0 indicates that the RS model did not make a single correct prediction. Generally, the Accuracy mathematical expression is defined as: 
-$$A=\frac{Number\;of\;correct\;predictions}{Total\;number\;of\;predictions}$$<p>
+$$A=\frac{Number\;of\;correct\;predictions}{Total\;number\;of\;predictions}$$
+<p>
 In RS Metrics the computation is determined by the following formula: 
-    $$Accuracy=\frac{Number\;of\;correctly\;recommended\;services}{Total\;number\;of\;services}$$where correctness is defined as if the service is both accessed by the user and also it is recommended by the RS</p>
+    $$Accuracy=\frac{Number\;of\;correctly\;recommended\;services}{Total\;number\;of\;services}$$where correctness is defined as if the service is both accessed by the user and also it is recommended by the RS
+</p>
 
 ## Output
 

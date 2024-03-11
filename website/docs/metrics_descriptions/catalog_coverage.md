@@ -10,7 +10,7 @@ sidebar_position: 2
 The percentage (%) of the division of the unique services found in recommendations to the total number of published services.
 
 ## Description
-The Catalog Coverage is described by the formula: $$\frac{unique\_rec\_services}{services}$$
+The Catalog Coverage is described by the formula: $\frac{unique\_rec\_services}{services}$
 
 ## Output
 
