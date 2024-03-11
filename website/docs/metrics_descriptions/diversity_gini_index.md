@@ -10,10 +10,12 @@ sidebar_position: 4
 Measures Recommendations' diversity. The index is 0 when all items are chosen equally often, and 1 when a single item is always chosen.
 
 ## Description
-The diversity ($$G$$) of the recommendations according to Gini Index.  The index is 0 when all items are chosen equally often,  and 1 when a single item is always chosen (see [book](https://link.springer.com/10.1007/978-1-4939-7131-2_110158)). Generally, the Gini Index mathematical expression is defined as:<p> 
+The diversity ($$G$$) of the recommendations according to Gini Index.  The index is 0 when all items are chosen equally often,  and 1 when a single item is always chosen (see [book](https://link.springer.com/10.1007/978-1-4939-7131-2_110158)). Generally, the Gini Index mathematical expression is defined as:
+<p> 
     $$G=\frac{1}{n-1}\sum_{j=1}^{n}(2j-n-1)p(i_j)$$, where $$i_1,\ldots,i_n$$ is the list of items ordered according to increasing $$p(i)$$ and each item $$i$$ accounts for a proportion $$p(i)$$ of user recommendations.
 In RS Metrics the computation is determined by the following formula:
-    $$Diversity=\frac{1}{n-1}\sum_{j=1}^{n}(2j-n-1)\left(\frac{count(j)}{recommendations}\right)$$ </p>
+    $$Diversity=\frac{1}{n-1}\sum_{j=1}^{n}(2j-n-1)\left(\frac{count(j)}{recommendations}\right)$$
+</p>
 
 ## Output
 

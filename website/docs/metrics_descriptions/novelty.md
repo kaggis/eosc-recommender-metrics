@@ -10,7 +10,11 @@ sidebar_position: 7
 The novelty metric  expresses the ability of the system to recommend items not generally seen before by the population of users.
 
 ## Description
-Calculating novelty of the recommender system based on the user actions using the following formula: $$Novelty=\frac{\sum\nolimits_{i \in R}-log(p(i))}{|R|}$$ For each service item $i$ belonging to the set of recommended services $R$ calculate the portion $p(i)$ of the times the service has been viewed to the total views of the services produced by the user actions data.
+Calculating novelty of the recommender system based on the user actions using the following formula: 
+$$
+Novelty=\frac{\sum\nolimits_{i \in R}-log(p(i))}{|R|}
+$$ 
+For each service item $i$ belonging to the set of recommended services $R$ calculate the portion $p(i)$ of the times the service has been viewed to the total views of the services produced by the user actions data.
 
 ## Output
 
